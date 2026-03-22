@@ -39,8 +39,8 @@ export async function GET() {
     // 3. Fetch detections
     let query = supabase.from('detections').select('*');
     
-    if (org) {
-      query = query.eq('organization_id', org.id);
+    if (orgId) {
+      query = query.eq('organization_id', orgId);
     }
 
     const { data, error } = await query
