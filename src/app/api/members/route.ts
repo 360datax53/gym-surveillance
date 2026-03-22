@@ -26,7 +26,6 @@ export async function GET() {
     const { data, error } = await supabase
       .from('members')
       .select('*')
-      .order('created_at', { ascending: false })
 
     if (error) throw error
 
