@@ -5,13 +5,13 @@ import { createClient } from '@/lib/supabase'
 
 interface Detection {
   id: string
-  alert_type: string
+  detection_type: string
   person_name: string
-  location: string
-  description: string
-  alert_time: string
-  resolved: boolean
-  severity: string
+  location?: string
+  description?: string
+  detection_time: string
+  resolved?: boolean
+  severity?: string
 }
 
 export default function AlertsPage() {
@@ -26,7 +26,7 @@ export default function AlertsPage() {
         const { data, error: sbError } = await supabase
           .from('detections')
           .select('*')
-          .order('alert_time', { ascending: false })
+          .order('detection_time', { ascending: false })
         
         if (sbError) throw sbError
         setAlerts(data || [])
@@ -92,16 +92,18 @@ export default function AlertsPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
               <div>
                 <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.1rem', fontWeight: 600 }}>
-                  {alert.alert_type}
+                  {alert.detection_type || 'Unspecified Type'}
                 </h3>
                 <p style={{ margin: '0 0 0.5rem', color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>
-                  {alert.person_name} • {alert.location}
+                  {alert.person_name} {alert.location ? `• ${alert.location}` : ''}
                 </p>
-                <p style={{ margin: '0 0 0.5rem', color: 'var(--color-text-tertiary)', fontSize: '0.9rem' }}>
-                  {alert.description}
-                </p>
+                {alert.description && (
+                  <p style={{ margin: '0 0 0.5rem', color: 'var(--color-text-tertiary)', fontSize: '0.9rem' }}>
+                    {alert.description}
+                  </p>
+                )}
                 <p style={{ margin: 0, color: 'var(--color-text-tertiary)', fontSize: '0.8rem' }}>
-                  {new Date(alert.alert_time).toLocaleString()}
+                  {new Date(alert.detection_time).toLocaleString()}
                 </p>
               </div>
               <div style={{
@@ -113,12 +115,27 @@ export default function AlertsPage() {
                 color: alert.resolved ? '#008000' : alert.severity === 'high' ? 'var(--color-text-danger)' : '#cc8400',
                 border: alert.resolved ? '1px solid rgba(0, 200, 0, 0.2)' : '1px solid transparent'
               }}>
-                {alert.resolved ? '✓ Resolved' : alert.severity === 'high' ? '🔴 High' : '🟡 Medium'}
+                {alert.resolved ? '✓ Resolved' : alert.severity === 'high' ? '🔴 High' : alert.severity === 'medium' ? '🟡 Medium' : 'Low'}
               </div>
             </div>
           </div>
         ))}
       </div>
+
+      {alerts.length === 0 && (
+        <div style={{ 
+          padding: '3rem', 
+          textAlign: 'center', 
+          backgroundColor: 'var(--color-background-secondary)',
+          borderRadius: 'var(--border-radius-lg)',
+          border: '1px dashed var(--color-border-secondary)'
+        }}>
+          <p style={{ color: 'var(--color-text-tertiary)' }}>No alerts found in the database.</p>
+        </div>
+      )}
+    </div>
+  )
+}
 
       {alerts.length === 0 && (
         <div style={{ 
