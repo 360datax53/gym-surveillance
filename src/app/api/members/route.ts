@@ -1,25 +1,39 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
     const cookieStore = cookies();
-    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          },
+        },
+      }
+    );
 
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get user's organization
-    const { data: org, error: orgError } = await supabase
+    const { data: org } = await supabase
       .from('organizations')
       .select('id')
       .eq('created_by', session.user.id)
       .single();
 
-    if (orgError || !org) {
+    if (!org) {
       return NextResponse.json(
         { error: 'Organization not found' },
         { status: 400 }
@@ -29,15 +43,13 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { name, email, phone, card_id, membership_type = 'annual', membership_start } = body;
 
-    // Validation
     if (!name || !email || !phone) {
       return NextResponse.json(
-        { error: 'Missing required fields: name, email, phone' },
+        { error: 'Missing required fields' },
         { status: 400 }
       );
     }
 
-    // Check duplicate email
     const { data: existing } = await supabase
       .from('members')
       .select('id')
@@ -52,7 +64,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Calculate membership end date
     const start = new Date(membership_start || new Date());
     const end = new Date(start);
     
@@ -64,7 +75,6 @@ export async function POST(request: NextRequest) {
       end.setFullYear(end.getFullYear() + 1);
     }
 
-    // Insert member
     const { data: member, error } = await supabase
       .from('members')
       .insert({
