@@ -136,18 +136,3 @@ export default function AlertsPage() {
     </div>
   )
 }
-
-      {alerts.length === 0 && (
-        <div style={{ 
-          padding: '3rem', 
-          textAlign: 'center', 
-          backgroundColor: 'var(--color-background-secondary)',
-          borderRadius: 'var(--border-radius-lg)',
-          border: '1px dashed var(--color-border-secondary)'
-        }}>
-          <p style={{ color: 'var(--color-text-tertiary)' }}>No alerts found in the database.</p>
-        </div>
-      )}
-    </div>
-  )
-}
