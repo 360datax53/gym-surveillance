@@ -1,5 +1,3 @@
-mkdir -p "src/app/(dashboard)/members"
-cat > "src/app/(dashboard)/members/page.tsx" << 'EOF'
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -83,4 +81,3 @@ export default function MembersPage() {
     </div>
   );
 }
-EOF
