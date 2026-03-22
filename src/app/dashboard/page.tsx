@@ -160,7 +160,9 @@ export default function DashboardPage() {
             }}>
             👤 View Members
           </button>
-          <button style={{
+          <button 
+            onClick={() => router.push('/dashboard/alerts')}
+            style={{
             padding: '0.75rem',
             background: 'var(--color-text-info)',
             color: 'white',
