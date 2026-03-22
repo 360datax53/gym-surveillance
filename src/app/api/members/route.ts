@@ -5,7 +5,23 @@ import { createClient } from '@/lib/supabase'
 
 export async function GET() {
   try {
-    const supabase = createClient()
+    const cookieStore = cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          },
+        },
+      }
+    );
     
     const { data, error } = await supabase
       .from('members')
@@ -15,10 +31,10 @@ export async function GET() {
     if (error) throw error
 
     return NextResponse.json({ members: data })
-  } catch (error) {
+  } catch (error: any) {
     console.error('GET /api/members error:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch members' },
+      { error: error.message || 'Failed to fetch members' },
       { status: 500 }
     )
   }
