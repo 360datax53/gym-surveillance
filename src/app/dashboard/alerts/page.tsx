@@ -22,14 +22,13 @@ export default function AlertsPage() {
   useEffect(() => {
     async function fetchAlerts() {
       try {
-        const supabase = createClient()
-        const { data, error: sbError } = await supabase
-          .from('detections')
-          .select('*')
-          .order('detection_time', { ascending: false })
-        
-        if (sbError) throw sbError
-        setAlerts(data || [])
+        const response = await fetch('/api/alerts')
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || 'Failed to fetch alerts')
+        }
+        const data = await response.json()
+        setAlerts(data.alerts || [])
       } catch (err: any) {
         console.error('Error fetching alerts:', err)
         setError(err.message || 'Failed to fetch alerts')
