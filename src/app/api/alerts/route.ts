@@ -47,12 +47,11 @@ export async function GET() {
       .order('created_at', { ascending: false }); // Using created_at as a fallback
 
     if (error) {
-      // Specifically handle the "app.current_org_id" error to provide guidance
+      // Provide more helpful context for the common RLS parameter error
       if (error.message.includes('app.current_org_id')) {
-        throw new Error(
-          'Database RLS policy error: The "detections" table expects "app.current_org_id" to be set in the Postgres session. ' +
-          'Please ensure your RLS policy handles missing session variables or use "auth.uid()" for filtering.'
-        );
+        return NextResponse.json({ 
+          error: `Database RLS policy error on table "alerts": ${error.message}. Please update your RLS policy as instructed.` 
+        }, { status: 500 });
       }
       throw error;
     }
