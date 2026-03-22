@@ -24,20 +24,16 @@ export async function GET() {
 
     // 1. Get the current session
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
     // 2. Fetch the user's organization
-    const { data: org, error: orgError } = await supabase
-      .from('organizations')
-      .select('id')
-      .eq('created_by', session.user.id)
-      .single();
-
-    if (orgError || !org) {
-      console.warn('Organization fetch failed for alerts:', orgError);
-      // We'll continue anyway, but the query might fail if RLS is strict
+    let orgId = null;
+    if (session) {
+      const { data: org } = await supabase
+        .from('organizations')
+        .select('id')
+        .eq('created_by', session.user.id)
+        .single();
+      orgId = org?.id;
     }
     
     // 3. Fetch detections
