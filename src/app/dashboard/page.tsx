@@ -6,27 +6,31 @@ import { createClient } from '@/lib/supabase'
 
 export default function DashboardPage() {
   const router = useRouter()
-  const [loading, setLoading] = useState(true)
+  const [isAuthed, setIsAuthed] = useState(false)
 
   useEffect(() => {
     const checkAuth = async () => {
-      const supabase = createClient()
-      const {
-        data: { session },
-      } = await supabase.auth.getSession()
+      try {
+        const supabase = createClient()
+        const {
+          data: { session },
+        } = await supabase.auth.getSession()
 
-      if (!session?.user) {
+        if (session?.user) {
+          setIsAuthed(true)
+        } else {
+          router.push('/auth/login')
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error)
         router.push('/auth/login')
-        return
       }
-
-      setLoading(false)
     }
 
     checkAuth()
   }, [router])
 
-  if (loading) {
+  if (!isAuthed) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh' }}>
         <p>Loading...</p>
