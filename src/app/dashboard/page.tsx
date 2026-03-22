@@ -146,16 +146,18 @@ export default function DashboardPage() {
       }}>
         <h3 style={{ margin: '0 0 1rem', fontSize: '16px', fontWeight: 500 }}>Quick Actions</h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.75rem' }}>
-          <button style={{
-            padding: '0.75rem',
-            background: 'var(--color-text-info)',
-            color: 'white',
-            border: 'none',
-            borderRadius: 'var(--border-radius-md)',
-            fontSize: '14px',
-            fontWeight: 500,
-            cursor: 'pointer',
-          }}>
+          <button 
+            onClick={() => router.push('/dashboard/members')}
+            style={{
+              padding: '0.75rem',
+              background: 'var(--color-text-info)',
+              color: 'white',
+              border: 'none',
+              borderRadius: 'var(--border-radius-md)',
+              fontSize: '14px',
+              fontWeight: 500,
+              cursor: 'pointer',
+            }}>
             👤 View Members
           </button>
           <button style={{
