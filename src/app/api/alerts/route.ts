@@ -36,15 +36,15 @@ export async function GET() {
       orgId = org?.id;
     }
     
-    // 3. Fetch detections
-    let query = supabase.from('detections').select('*');
+    // 3. Fetch alerts
+    let query = supabase.from('alerts').select('*');
     
     if (orgId) {
       query = query.eq('organization_id', orgId);
     }
 
     const { data, error } = await query
-      .order('detection_time', { ascending: false });
+      .order('created_at', { ascending: false }); // Using created_at as a fallback
 
     if (error) {
       // Specifically handle the "app.current_org_id" error to provide guidance

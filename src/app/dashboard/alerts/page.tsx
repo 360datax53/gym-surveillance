@@ -5,11 +5,14 @@ import { createClient } from '@/lib/supabase'
 
 interface Detection {
   id: string
-  detection_type: string
+  detection_type?: string
+  alert_type?: string
   person_name: string
   location?: string
   description?: string
-  detection_time: string
+  detection_time?: string
+  alert_time?: string
+  created_at: string
   resolved?: boolean
   severity?: string
 }
@@ -91,7 +94,7 @@ export default function AlertsPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
               <div>
                 <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.1rem', fontWeight: 600 }}>
-                  {alert.detection_type || 'Unspecified Type'}
+                  {alert.detection_type || alert.alert_type || 'Unspecified Type'}
                 </h3>
                 <p style={{ margin: '0 0 0.5rem', color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>
                   {alert.person_name} {alert.location ? `• ${alert.location}` : ''}
@@ -102,7 +105,7 @@ export default function AlertsPage() {
                   </p>
                 )}
                 <p style={{ margin: 0, color: 'var(--color-text-tertiary)', fontSize: '0.8rem' }}>
-                  {new Date(alert.detection_time).toLocaleString()}
+                  {new Date(alert.detection_time || alert.alert_time || alert.created_at).toLocaleString()}
                 </p>
               </div>
               <div style={{
