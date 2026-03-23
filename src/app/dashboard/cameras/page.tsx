@@ -205,7 +205,7 @@ export default function CamerasPage() {
             {/* Camera Preview / Placeholder */}
             <div style={{
               width: '100%',
-              height: '180px',
+              height: '320px',
               backgroundColor: '#0a0a0a',
               display: 'flex',
               alignItems: 'center',
@@ -214,7 +214,7 @@ export default function CamerasPage() {
               backgroundImage: 'radial-gradient(circle at center, #1a1a1a 0%, #0a0a0a 100%)',
               borderBottom: '1px solid var(--color-border-tertiary)'
             }}>
-            <CameraFeed camera={camera} />
+              <CameraFeed camera={camera as any} organizationId={camera.organization_id} />
             </div>
 
             <div style={{ padding: '1.5rem' }}>
