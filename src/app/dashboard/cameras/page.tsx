@@ -22,6 +22,7 @@ export default function CamerasPage() {
   const [cameras, setCameras] = useState<Camera[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [settingsOpenId, setSettingsOpenId] = useState<string | null>(null)
   const router = useRouter()
 
   const fetchCameras = async () => {
@@ -61,7 +62,14 @@ export default function CamerasPage() {
     }
   }
 
-  const handleDeleteCamera = async (cameraId: string) => {
+  const handleDeleteCamera = async (cameraId: string, cameraName: string) => {
+    const confirmation = window.prompt(`To delete camera "${cameraName}", please type its name exactly:`)
+    
+    if (confirmation !== cameraName) {
+      if (confirmation !== null) alert('Names do not match. Deletion cancelled.')
+      return
+    }
+
     try {
       const response = await fetch(`/api/cameras/${cameraId}`, {
         method: 'DELETE',
@@ -215,18 +223,36 @@ export default function CamerasPage() {
                   <h3 style={{ margin: '0 0 0.4rem', fontSize: '1.15rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>
                     {camera.name}
                   </h3>
-                  <span style={{ 
-                    fontSize: '0.8rem', 
-                    color: 'var(--color-text-secondary)',
-                    backgroundColor: 'var(--color-background-secondary)',
-                    padding: '0.2rem 0.6rem',
-                    borderRadius: 'var(--border-radius-md)',
-                    fontWeight: 600,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.02em'
-                  }}>
-                    {camera.zone ? camera.zone : 'GENERAL ZONE'}
-                  </span>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <span style={{ 
+                      fontSize: '0.8rem', 
+                      color: 'var(--color-text-secondary)',
+                      backgroundColor: 'var(--color-background-secondary)',
+                      padding: '0.2rem 0.6rem',
+                      borderRadius: 'var(--border-radius-md)',
+                      fontWeight: 600,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.02em'
+                    }}>
+                      {camera.zone ? camera.zone : 'GENERAL ZONE'}
+                    </span>
+                    <button 
+                      onClick={() => setSettingsOpenId(settingsOpenId === camera.id ? null : camera.id)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        padding: '4px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        borderRadius: '4px',
+                        backgroundColor: settingsOpenId === camera.id ? 'var(--color-background-secondary)' : 'transparent',
+                        transition: 'all 0.2s ease'
+                      }}
+                      title="Camera Settings"
+                    >
+                      ⚙️
+                    </button>
+                  </div>
                 </div>
                 <span style={{
                   padding: '0.4rem 0.8rem',
@@ -308,38 +334,44 @@ export default function CamerasPage() {
                 </div>
               )}
 
-              <button
-                onClick={() => {
-                  if (window.confirm(`Delete camera "${camera.name}"? This cannot be undone.`)) {
-                    handleDeleteCamera(camera.id)
-                  }
-                }}
-                style={{
-                  marginTop: '1rem',
-                  width: '100%',
-                  padding: '0.75rem',
-                  backgroundColor: 'rgba(255, 82, 82, 0.1)',
-                  color: '#ff5252',
-                  border: '1px solid rgba(255, 82, 82, 0.2)',
+              {settingsOpenId === camera.id && (
+                <div style={{ 
+                  marginTop: '1.5rem', 
+                  padding: '1.5rem', 
+                  backgroundColor: 'rgba(255, 82, 82, 0.05)', 
                   borderRadius: 'var(--border-radius-md)',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px'
-                }}
-                onMouseOver={(e) => {
-                  e.currentTarget.style.backgroundColor = 'rgba(255, 82, 82, 0.2)';
-                }}
-                onMouseOut={(e) => {
-                  e.currentTarget.style.backgroundColor = 'rgba(255, 82, 82, 0.1)';
-                }}
-              >
-                🗑️ Delete Camera
-              </button>
+                  border: '1px solid rgba(255, 82, 82, 0.2)'
+                }}>
+                  <p style={{ margin: '0 0 1rem', fontSize: '11px', fontWeight: 800, color: '#ff5252', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    ⚠️ Danger Zone
+                  </p>
+                  <button
+                    onClick={() => handleDeleteCamera(camera.id, camera.name)}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      backgroundColor: '#ff5252',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 'var(--border-radius-md)',
+                      fontSize: '13px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      boxShadow: '0 4px 12px rgba(255, 82, 82, 0.2)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px'
+                    }}
+                  >
+                    🗑️ Permanently Delete Camera
+                  </button>
+                  <p style={{ margin: '0.75rem 0 0', fontSize: '10px', color: 'var(--color-text-tertiary)', textAlign: 'center' }}>
+                    This action requires typing the camera name to confirm.
+                  </p>
+                </div>
+              )}
 
               {camera.status === 'online' ? (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.75rem' }}>
