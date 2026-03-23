@@ -241,25 +241,47 @@ export default function CamerasPage() {
               </div>
 
               {camera.status === 'online' && (
-                <button style={{
-                  width: '100%',
-                  marginTop: '0.5rem',
-                  padding: '0.75rem',
-                  backgroundColor: 'var(--color-text-info)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: 'var(--border-radius-md)',
-                  fontSize: '14px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  transition: 'background-color 0.2s',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px'
-                }}>
-                  📺 View Live Stream
-                </button>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.75rem' }}>
+                  <button style={{
+                    padding: '0.75rem',
+                    backgroundColor: 'var(--color-text-info)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 'var(--border-radius-md)',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '4px'
+                  }}>
+                    📺 Live View
+                  </button>
+                  <a 
+                    href="http://192.168.1.1:8081"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      padding: '0.75rem',
+                      backgroundColor: 'var(--color-background-secondary)',
+                      color: 'var(--color-text-primary)',
+                      border: '1px solid var(--color-border-secondary)',
+                      borderRadius: 'var(--border-radius-md)',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      textDecoration: 'none',
+                      textAlign: 'center',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '4px'
+                    }}
+                  >
+                    🖥️ NVR Panel
+                  </a>
+                </div>
               )}
             </div>
           </div>
