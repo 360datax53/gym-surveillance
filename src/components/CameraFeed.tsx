@@ -158,33 +158,59 @@ export default function CameraFeed({ camera, organizationId }: CameraFeedProps) 
         <div style={{ position: 'absolute', bottom: '20px', left: '20px', color: 'rgba(255,255,255,0.5)', fontSize: '10px' }}>
           LIVE // {camera.camera_id} // {new Date().toLocaleTimeString()}
         </div>
-      </div>
 
-      {matchedMember && (
-        <div style={{ marginTop: '1.25rem', padding: '1.25rem', background: 'rgba(0, 200, 83, 0.1)', border: '1px solid rgba(0, 200, 83, 0.2)', borderRadius: '12px', color: '#00c853' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        {/* Identity HUD Overlay (Bottom) */}
+        {matchedMember && (
+          <div style={{ 
+            position: 'absolute',
+            bottom: '0',
+            left: '0',
+            right: '0',
+            padding: '1.25rem', 
+            background: 'linear-gradient(to top, rgba(0, 200, 83, 0.4), rgba(0, 200, 83, 0.1))',
+            backdropFilter: 'blur(8px)',
+            borderTop: '1px solid rgba(0, 200, 83, 0.3)', 
+            color: '#00e676',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
             <div>
-              <h4 style={{ margin: '0 0 0.5rem', fontSize: '15px', fontWeight: 800, textTransform: 'uppercase' }}>Identity Verified</h4>
-              <p style={{ margin: '0', fontSize: '14px', fontWeight: 600, color: '#fff' }}>{matchedMember.name}</p>
-              <p style={{ margin: '0.25rem 0 0', fontSize: '12px', opacity: 0.8 }}>Status: {matchedMember.membership_status.toUpperCase()}</p>
+              <div style={{ fontSize: '10px', fontWeight: 900, letterSpacing: '0.2em', marginBottom: '4px' }}>IDENTITY VERIFIED</div>
+              <div style={{ fontSize: '16px', fontWeight: 800, color: '#fff' }}>{matchedMember.name}</div>
+              <div style={{ fontSize: '10px', opacity: 0.8, marginTop: '2px' }}>STATUS: {matchedMember.membership_status.toUpperCase()}</div>
             </div>
             <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '20px', fontWeight: 900 }}>{(matchedMember.confidence * 100).toFixed(0)}%</div>
-              <div style={{ fontSize: '9px', fontWeight: 700, opacity: 0.6 }}>MATCH CONFIDENCE</div>
+              <div style={{ fontSize: '24px', fontWeight: 900 }}>{(matchedMember.confidence * 100).toFixed(0)}%</div>
+              <div style={{ fontSize: '8px', fontWeight: 700, opacity: 0.7 }}>MATCH</div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {isUnknown && detections.length > 0 && (
-        <div style={{ marginTop: '1.25rem', padding: '1.25rem', background: 'rgba(255, 61, 0, 0.1)', border: '1px solid rgba(255, 61, 0, 0.2)', borderRadius: '12px', color: '#ff3d00' }}>
-          <h4 style={{ margin: '0 0 0.5rem', fontSize: '15px', fontWeight: 800, textTransform: 'uppercase' }}>Unknown Detection</h4>
-          <p style={{ margin: '0', fontSize: '13px', lineHeight: '1.5' }}>Unrecognized face in restricted zone. Verification failed.</p>
-          <div style={{ marginTop: '0.75rem', fontSize: '10px', fontWeight: 700, padding: '4px 8px', background: 'rgba(255, 61, 0, 0.2)', borderRadius: '4px', display: 'inline-block' }}>
-            PROTOCOL: ALERT SENT
+        {isUnknown && detections.length > 0 && (
+          <div style={{ 
+            position: 'absolute',
+            bottom: '0',
+            left: '0',
+            right: '0',
+            padding: '1.25rem', 
+            background: 'linear-gradient(to top, rgba(255, 61, 0, 0.4), rgba(255, 61, 0, 0.1))',
+            backdropFilter: 'blur(8px)',
+            borderTop: '1px solid rgba(255, 61, 0, 0.3)', 
+            color: '#ff3d00'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <div style={{ fontSize: '10px', fontWeight: 900, letterSpacing: '0.2em', marginBottom: '4px' }}>UNAUTHORIZED ENTRY</div>
+                <div style={{ fontSize: '16px', fontWeight: 800, color: '#fff' }}>UNKNOWN DETECTION</div>
+              </div>
+              <div style={{ fontSize: '10px', fontWeight: 700, padding: '4px 8px', background: 'rgba(255, 61, 0, 0.3)', borderRadius: '2px', border: '1px solid rgba(255, 61, 0, 0.5)' }}>
+                PROTOCOL: ALERT SENT
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }
