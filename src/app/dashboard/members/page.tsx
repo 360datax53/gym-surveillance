@@ -97,27 +97,50 @@ export default function MembersPage() {
       <header style={{ marginBottom: '2rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
           <h1 style={{ fontSize: '2rem', fontWeight: 600 }}>Gym Members</h1>
-          <a 
-            href="/api/members/export?format=csv" 
-            download
-            style={{
-              padding: '0.6rem 1.2rem',
-              backgroundColor: 'var(--color-text-info)',
-              color: 'white',
-              textDecoration: 'none',
-              borderRadius: 'var(--border-radius-md)',
-              fontSize: '14px',
-              fontWeight: 500,
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              transition: 'opacity 0.2s'
-            }}
-            onMouseOver={(e) => (e.currentTarget.style.opacity = '0.9')}
-            onMouseOut={(e) => (e.currentTarget.style.opacity = '1')}
-          >
-            <span>📥</span> Download CSV
-          </a>
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <a 
+              href="/dashboard/members/new" 
+              style={{
+                padding: '0.6rem 1.2rem',
+                backgroundColor: 'var(--color-background-tertiary)',
+                color: 'var(--color-text-primary)',
+                textDecoration: 'none',
+                borderRadius: 'var(--border-radius-md)',
+                fontSize: '14px',
+                fontWeight: 500,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                border: '1px solid var(--color-border-tertiary)',
+                transition: 'background-color 0.2s'
+              }}
+              onMouseOver={(e) => (e.currentTarget.style.backgroundColor = 'var(--color-border-tertiary)')}
+              onMouseOut={(e) => (e.currentTarget.style.backgroundColor = 'var(--color-background-tertiary)')}
+            >
+              <span>➕</span> Add Member
+            </a>
+            <a 
+              href="/api/members/export?format=csv" 
+              download
+              style={{
+                padding: '0.6rem 1.2rem',
+                backgroundColor: 'var(--color-text-info)',
+                color: 'white',
+                textDecoration: 'none',
+                borderRadius: 'var(--border-radius-md)',
+                fontSize: '14px',
+                fontWeight: 500,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                transition: 'opacity 0.2s'
+              }}
+              onMouseOver={(e) => (e.currentTarget.style.opacity = '0.9')}
+              onMouseOut={(e) => (e.currentTarget.style.opacity = '1')}
+            >
+              <span>📥</span> Download CSV
+            </a>
+          </div>
         </div>
         
         <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
