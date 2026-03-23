@@ -241,6 +241,39 @@ export default function CamerasPage() {
               </div>
 
               {camera.status === 'online' && (
+                <div style={{ marginTop: '1.25rem', paddingTop: '1.25rem', borderTop: '1px solid var(--color-border-tertiary)' }}>
+                  <h4 style={{ 
+                    margin: '0 0 1rem', 
+                    fontSize: '11px', 
+                    fontWeight: 700, 
+                    textTransform: 'uppercase', 
+                    color: 'var(--color-text-tertiary)',
+                    letterSpacing: '0.05em'
+                  }}>
+                    Hardware Health
+                  </h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                    <div style={{ backgroundColor: 'var(--color-background-secondary)', padding: '0.75rem', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--color-border-tertiary)' }}>
+                      <p style={{ margin: 0, fontSize: '10px', color: 'var(--color-text-tertiary)', fontWeight: 600 }}>CONNECTION</p>
+                      <p style={{ margin: '0.2rem 0 0', fontSize: '13px', fontWeight: 700, color: '#00c853' }}>✓ Stable</p>
+                    </div>
+                    <div style={{ backgroundColor: 'var(--color-background-secondary)', padding: '0.75rem', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--color-border-tertiary)' }}>
+                      <p style={{ margin: 0, fontSize: '10px', color: 'var(--color-text-tertiary)', fontWeight: 600 }}>UPTIME</p>
+                      <p style={{ margin: '0.2rem 0 0', fontSize: '13px', fontWeight: 700, color: 'var(--color-text-primary)' }}>99.8%</p>
+                    </div>
+                    <div style={{ backgroundColor: 'var(--color-background-secondary)', padding: '0.75rem', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--color-border-tertiary)' }}>
+                      <p style={{ margin: 0, fontSize: '10px', color: 'var(--color-text-tertiary)', fontWeight: 600 }}>CPU LOAD</p>
+                      <p style={{ margin: '0.2rem 0 0', fontSize: '13px', fontWeight: 700, color: 'var(--color-text-primary)' }}>42%</p>
+                    </div>
+                    <div style={{ backgroundColor: 'var(--color-background-secondary)', padding: '0.75rem', borderRadius: 'var(--border-radius-md)', border: '1px solid var(--color-border-tertiary)' }}>
+                      <p style={{ margin: 0, fontSize: '10px', color: 'var(--color-text-tertiary)', fontWeight: 600 }}>STORAGE</p>
+                      <p style={{ margin: '0.2rem 0 0', fontSize: '13px', fontWeight: 700, color: 'var(--color-text-primary)' }}>256GB</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {camera.status === 'online' && (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.75rem' }}>
                   <button style={{
                     padding: '0.75rem',
