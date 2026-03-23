@@ -46,9 +46,8 @@ export async function GET() {
     
     if (orgId) {
       // Attempt to set the session variable via RPC if the function exists
-      await supabase.rpc('set_app_org_id', { org_id: orgId }).catch(() => {
-        // Silently ignore if RPC doesn't exist, as the policy might have been updated instead
-      });
+      // We ignore the error as the policy might have been updated instead of adding the RPC
+      await supabase.rpc('set_app_org_id', { org_id: orgId });
       query = query.eq('organization_id', orgId);
     }
 
