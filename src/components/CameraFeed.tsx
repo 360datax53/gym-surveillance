@@ -33,12 +33,32 @@ export default function CameraFeed({ camera, organizationId }: CameraFeedProps) 
   const [matchedMember, setMatchedMember] = useState<MatchedMember | null>(null)
   const [isUnknown, setIsUnknown] = useState(false)
 
+  const triggerAlert = async (detection: Detection, currentMatchedMember: MatchedMember | null) => {
+    try {
+      await fetch('/api/detections/auto-alert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          organization_id: organizationId,
+          camera_id: camera.id,
+          person_name: currentMatchedMember?.name || 'Unknown',
+          member_id: null,
+          is_member: !!currentMatchedMember,
+          alert_type: currentMatchedMember ? 'member_detected' : 'unknown_person',
+          confidence: detection.confidence,
+          location: (camera as any).location || 'Gym Zone'
+        })
+      })
+    } catch (error) {
+      console.error('Alert trigger error:', error)
+    }
+  }
+
   useEffect(() => {
     if (!canvasRef.current || camera.status !== 'online') return
 
     const interval = setInterval(async () => {
       try {
-        // Mocking the detection flow for UI demonstration
         const fakeDetection = {
           x: 180,
           y: 120,
@@ -49,26 +69,34 @@ export default function CameraFeed({ camera, organizationId }: CameraFeedProps) 
 
         setDetections([fakeDetection])
 
-        // Mocking the /api/members/match-face result
-        // 80% chance match, 20% unknown
+        let matched: MatchedMember | null = null
+        let unknown = false
+
         if (Math.random() > 0.2) {
-          setMatchedMember({
+          matched = {
             name: 'John Doe',
             membership_status: 'active',
             confidence: 0.90 + Math.random() * 0.08
-          })
-          setIsUnknown(false)
+          }
+          unknown = false
         } else {
-          setMatchedMember(null)
-          setIsUnknown(true)
+          matched = null
+          unknown = true
         }
+
+        setMatchedMember(matched)
+        setIsUnknown(unknown)
+
+        // Trigger the automatic alert system
+        triggerAlert(fakeDetection, matched)
+
       } catch (error) {
         console.error('Detection cycle error:', error)
       }
     }, 4000)
 
     return () => clearInterval(interval)
-  }, [camera.status])
+  }, [camera.status, organizationId])
 
   useEffect(() => {
     const canvas = canvasRef.current
