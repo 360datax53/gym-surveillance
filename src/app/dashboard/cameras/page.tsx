@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import CameraFeed from '@/components/CameraFeed'
 
 interface Camera {
   id: string
@@ -146,48 +147,7 @@ export default function CamerasPage() {
               backgroundImage: 'radial-gradient(circle at center, #1a1a1a 0%, #0a0a0a 100%)',
               borderBottom: '1px solid var(--color-border-tertiary)'
             }}>
-              {camera.status === 'online' ? (
-                <div style={{ 
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  alignItems: 'center', 
-                  color: 'rgba(255,255,255,0.4)',
-                  fontSize: '12px',
-                  fontWeight: 500
-                }}>
-                  <div style={{ fontSize: '32px', marginBottom: '0.5rem', filter: 'drop-shadow(0 0 8px rgba(0,200,83,0.3))' }}>🎥</div>
-                  LIVE STREAM ACTIVE
-                  <div style={{
-                    position: 'absolute',
-                    top: '16px',
-                    right: '16px',
-                    width: '10px',
-                    height: '10px',
-                    borderRadius: '50%',
-                    backgroundColor: '#ff5252',
-                    boxShadow: '0 0 10px #ff5252',
-                    animation: 'pulse 1.5s infinite linear'
-                  }} />
-                  <div style={{
-                    position: 'absolute',
-                    bottom: '12px',
-                    left: '12px',
-                    backgroundColor: 'rgba(0,0,0,0.6)',
-                    padding: '2px 8px',
-                    borderRadius: '4px',
-                    fontSize: '10px',
-                    fontFamily: 'monospace',
-                    color: '#00c853'
-                  }}>
-                    REC 00:00:24
-                  </div>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', color: 'rgba(255,255,255,0.2)' }}>
-                  <div style={{ fontSize: '32px', marginBottom: '0.5rem' }}>📵</div>
-                  <div style={{ fontSize: '11px', letterSpacing: '0.1em' }}>SIGNAL LOST</div>
-                </div>
-              )}
+            <CameraFeed camera={camera} />
             </div>
 
             <div style={{ padding: '1.5rem' }}>
