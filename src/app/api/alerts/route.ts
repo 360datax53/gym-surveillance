@@ -28,27 +28,23 @@ export async function GET() {
     const { data: { session } } = await supabase.auth.getSession();
 
     // 2. Fetch the user's organization
-    let orgId = null;
-    if (session) {
-      // Try fetching by created_by first, fallback to any organization if none found
-      const { data: org } = await supabase
-        .from('organizations')
-        .select('id')
-        .eq('created_by', session.user.id)
-        .limit(1)
-        .maybeSingle();
-      
-      orgId = org?.id;
-    }
+    // 2. Fetch the user's authorized organizations
+    const { data: userOrgs } = await supabase
+      .from('user_organizations')
+      .select('organization_id')
+      .eq('user_id', session?.user.id);
+    
+    const orgIds = userOrgs?.map(uo => uo.organization_id) || [];
     
     // 3. Fetch detections (using the table name provided by user)
     let query = supabase.from('detections').select('*');
     
-    if (orgId) {
-      // Attempt to set the session variable via RPC if the function exists
-      // We ignore the error as the policy might have been updated instead of adding the RPC
-      await supabase.rpc('set_app_org_id', { org_id: orgId });
-      query = query.eq('organization_id', orgId);
+    if (orgIds.length > 0) {
+      query = query.in('organization_id', orgIds);
+    } else if (session) {
+      // If user is logged in but has no assigned orgs, they shouldn't see anything
+      // RLS will also handle this, but we'll be explicit.
+      query = query.eq('id', '00000000-0000-0000-0000-000000000000');
     }
 
     const { data, error } = await query

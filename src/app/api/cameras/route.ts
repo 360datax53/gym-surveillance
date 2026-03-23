@@ -25,23 +25,23 @@ export async function GET() {
     );
 
     const { data: { session } } = await supabase.auth.getSession();
-    let orgId = null;
-    if (session) {
-      const { data: org } = await supabase
-        .from('organizations')
-        .select('id')
-        .eq('created_by', session.user.id)
-        .maybeSingle();
-      orgId = org?.id;
+    const { data: userOrgs } = await supabase
+      .from('user_organizations')
+      .select('organization_id')
+      .eq('user_id', session?.user.id);
+    
+    const orgIds = userOrgs?.map(uo => uo.organization_id) || [];
+    
+    // 3. Fetch cameras
+    let query = supabase.from('cameras').select('*');
+    
+    if (orgIds.length > 0) {
+      query = query.in('organization_id', orgIds);
+    } else if (session) {
+      query = query.eq('id', '00000000-0000-0000-0000-000000000000');
     }
 
-    if (orgId) {
-      await supabase.rpc('set_app_org_id', { org_id: orgId });
-    }
-
-    const { data, error } = await supabase
-      .from('cameras')
-      .select('*')
+    const { data, error } = await query
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -77,29 +77,41 @@ export async function POST(request: NextRequest) {
     );
 
     const body = await request.json();
+    const { data: { session } } = await supabase.auth.getSession();
     
-    // Auto-detect organization if missing
-    let orgId = body.organization_id;
-    if (!orgId) {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        const { data: org } = await supabase
-          .from('organizations')
-          .select('id')
-          .eq('created_by', session.user.id)
-          .maybeSingle();
-        orgId = org?.id;
-      }
+    // 1. Fetch the user's authorized organizations
+    const { data: userOrgs } = await supabase
+      .from('user_organizations')
+      .select('organization_id')
+      .eq('user_id', session?.user.id);
+    
+    const authorizedOrgIds = userOrgs?.map(uo => uo.organization_id) || [];
+    
+    // 2. Determine and validate organization_id
+    let targetOrgId = body.organization_id;
+    
+    if (!targetOrgId) {
+      // Auto-assign the first authorized gym if none provided
+      targetOrgId = authorizedOrgIds[0];
+    } else if (!authorizedOrgIds.includes(targetOrgId)) {
+      // User is trying to add a camera to a gym they don't own/manage
+      return NextResponse.json(
+        { error: 'Unauthorized: You do not have access to this organization.' },
+        { status: 403 }
+      );
     }
 
-    if (orgId) {
-      await supabase.rpc('set_app_org_id', { org_id: orgId });
+    if (!targetOrgId) {
+      return NextResponse.json(
+        { error: 'No authorized organization found for this user.' },
+        { status: 400 }
+      );
     }
 
     const { data, error } = await supabase
       .from('cameras')
       .insert({
-        organization_id: orgId,
+        organization_id: targetOrgId,
         camera_id: body.camera_id,
         name: body.name,
         rtsp_url: body.rtsp_url,
