@@ -25,12 +25,31 @@ export async function GET() {
       }
     );
     
-    const { data, error } = await supabase
-      .from('members')
-      .select('*')
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    // 1. Fetch the user's authorized organizations
+    const { data: userOrgs } = await supabase
+      .from('user_organizations')
+      .select('organization_id')
+      .eq('user_id', session?.user.id);
+    
+    const orgIds = userOrgs?.map(uo => uo.organization_id) || [];
+
+    // 2. Fetch members filtered by authorized gyms
+    let query = supabase.from('members').select('*');
+    
+    if (orgIds.length > 0) {
+      query = query.in('organization_id', orgIds);
+    } else if (session) {
+      // If logged in but no orgs assigned, show nothing
+      query = query.eq('id', '00000000-0000-0000-0000-000000000000');
+    }
+
+    const { data, error } = await query
+      .order('registered_at', { ascending: false });
 
     if (error) throw error
-
+ 
     return NextResponse.json({ members: data })
   } catch (error: any) {
     console.error('GET /api/members error:', error)
@@ -60,42 +79,64 @@ export async function POST(request: NextRequest) {
         },
       }
     );
+
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    const { data: org } = await supabase
-      .from('organizations')
-      .select('id')
-      .eq('created_by', session.user.id)
-      .single();
-    if (!org) {
+
+    // 1. Fetch the user's authorized organizations
+    const { data: userOrgs } = await supabase
+      .from('user_organizations')
+      .select('organization_id')
+      .eq('user_id', session.user.id);
+    
+    const authorizedOrgIds = userOrgs?.map(uo => uo.organization_id) || [];
+
+    const body = await request.json();
+    const { name, email, phone, card_id, organization_id, membership_type = 'annual' } = body;
+
+    // 2. Determine and validate organization_id
+    let targetOrgId = organization_id;
+    if (!targetOrgId) {
+      targetOrgId = authorizedOrgIds[0];
+    } else if (!authorizedOrgIds.includes(targetOrgId)) {
       return NextResponse.json(
-        { error: 'Organization not found' },
+        { error: 'Unauthorized: You do not have access to this gym.' },
+        { status: 403 }
+      );
+    }
+
+    if (!targetOrgId) {
+      return NextResponse.json(
+        { error: 'No authorized gym found for this user.' },
         { status: 400 }
       );
     }
-    const body = await request.json();
-    const { name, email, phone, card_id, membership_type = 'annual', membership_start } = body;
+
     if (!name || !email || !phone) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       );
     }
+
+    // 3. Check for existing member in this specific gym
     const { data: existing } = await supabase
       .from('members')
       .select('id')
-      .eq('organization_id', org.id)
+      .eq('organization_id', targetOrgId)
       .eq('email', email)
-      .single();
+      .maybeSingle();
+
     if (existing) {
       return NextResponse.json(
-        { error: 'Email already exists' },
+        { error: 'Member with this email already exists in this gym.' },
         { status: 400 }
       );
     }
-    const start = new Date(membership_start || new Date());
+
+    const start = new Date();
     const end = new Date(start);
     
     if (membership_type === 'monthly') {
@@ -105,10 +146,11 @@ export async function POST(request: NextRequest) {
     } else {
       end.setFullYear(end.getFullYear() + 1);
     }
+
     const { data: member, error } = await supabase
       .from('members')
       .insert({
-        organization_id: org.id,
+        organization_id: targetOrgId,
         name,
         email,
         phone,
