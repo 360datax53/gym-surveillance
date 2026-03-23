@@ -273,7 +273,7 @@ export default function CamerasPage() {
                 </div>
               )}
 
-              {camera.status === 'online' && (
+              {camera.status === 'online' ? (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.75rem' }}>
                   <button style={{
                     padding: '0.75rem',
@@ -314,6 +314,22 @@ export default function CamerasPage() {
                   >
                     🖥️ NVR Panel
                   </a>
+                </div>
+              ) : (
+                <div style={{
+                  marginTop: '1.25rem',
+                  padding: '1rem',
+                  backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                  border: '1px solid rgba(255, 193, 7, 0.3)',
+                  borderRadius: 'var(--border-radius-md)',
+                  color: '#856404'
+                }}>
+                  <p style={{ margin: 0, fontSize: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    ⚠️ CAMERA OFFLINE
+                  </p>
+                  <p style={{ margin: '0.4rem 0 0', fontSize: '11px', opacity: 0.9, lineHeight: '1.4' }}>
+                    Connection lost. Please check power supply and local network connectivity.
+                  </p>
                 </div>
               )}
             </div>
