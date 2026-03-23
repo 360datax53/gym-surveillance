@@ -77,12 +77,19 @@ export default function DashboardPage() {
         </div>
 
         {/* Card: Cameras */}
-        <div style={{
-          background: 'var(--color-background-primary)',
-          border: '0.5px solid var(--color-border-tertiary)',
-          borderRadius: 'var(--border-radius-lg)',
-          padding: '1.5rem',
-        }}>
+        <div 
+          onClick={() => router.push('/dashboard/cameras')}
+          style={{
+            background: 'var(--color-background-primary)',
+            border: '0.5px solid var(--color-border-tertiary)',
+            borderRadius: 'var(--border-radius-lg)',
+            padding: '1.5rem',
+            cursor: 'pointer',
+            transition: 'transform 0.1s ease-in-out'
+          }}
+          onMouseOver={(e) => (e.currentTarget.style.transform = 'scale(1.02)')}
+          onMouseOut={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+        >
           <p style={{ margin: '0 0 0.5rem', fontSize: '12px', color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>Cameras Online</p>
           <h2 style={{ margin: '0 0 0.5rem', fontSize: '28px', fontWeight: 600 }}>5/5</h2>
           <p style={{ margin: 0, fontSize: '12px', color: 'var(--color-text-info)' }}>✅ All operational</p>
@@ -173,6 +180,20 @@ export default function DashboardPage() {
             cursor: 'pointer',
           }}>
             ⚠️ View Alerts
+          </button>
+          <button 
+            onClick={() => router.push('/dashboard/cameras')}
+            style={{
+              padding: '0.75rem',
+              background: 'var(--color-text-info)',
+              color: 'white',
+              border: 'none',
+              borderRadius: 'var(--border-radius-md)',
+              fontSize: '14px',
+              fontWeight: 500,
+              cursor: 'pointer',
+            }}>
+            📹 View Cameras
           </button>
           <button style={{
             padding: '0.75rem',
