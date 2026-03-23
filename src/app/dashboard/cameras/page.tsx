@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import CameraFeed from '@/components/CameraFeed'
 
 interface Camera {
@@ -14,12 +15,14 @@ interface Camera {
   latitude?: number
   longitude?: number
   created_at: string
+  enable_face_recognition?: boolean
 }
 
 export default function CamerasPage() {
   const [cameras, setCameras] = useState<Camera[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
 
   const fetchCameras = async () => {
     try {
@@ -35,6 +38,26 @@ export default function CamerasPage() {
       setError(err.message || 'An error occurred')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleToggleFaceRecognition = async (cameraId: string, enabled: boolean) => {
+    try {
+      const response = await fetch(`/api/cameras/${cameraId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enable_face_recognition: enabled })
+      })
+      
+      if (!response.ok) throw new Error('Failed to update')
+      
+      // Refresh local state to avoid full re-fetch
+      setCameras(prev => prev.map(cam => 
+        cam.id === cameraId ? { ...cam, enable_face_recognition: enabled } : cam
+      ));
+    } catch (error) {
+      console.error('Error:', error)
+      alert('Failed to update face recognition settings.')
     }
   }
 
@@ -81,9 +104,26 @@ export default function CamerasPage() {
         }
       `}</style>
       
-      <header style={{ marginBottom: '2.5rem' }}>
-        <h1 style={{ fontSize: '2.25rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--color-text-primary)' }}>Cameras & Hardware</h1>
-        <p style={{ color: 'var(--color-text-secondary)', margin: 0 }}>Monitor and manage your surveillance network in real-time.</p>
+      <header style={{ marginBottom: '2.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h1 style={{ fontSize: '2.25rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--color-text-primary)' }}>Cameras & Hardware</h1>
+          <p style={{ color: 'var(--color-text-secondary)', margin: 0 }}>Monitor and manage your surveillance network in real-time.</p>
+        </div>
+        <button
+          onClick={() => router.push('/dashboard/cameras/new')}
+          style={{
+            padding: '0.75rem 1.5rem',
+            backgroundColor: '#00c853',
+            color: 'white',
+            border: 'none',
+            borderRadius: 'var(--border-radius-md)',
+            fontWeight: 700,
+            cursor: 'pointer',
+            boxShadow: '0 4px 12px rgba(0, 200, 83, 0.2)'
+          }}
+        >
+          + Add Camera
+        </button>
       </header>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
@@ -230,6 +270,22 @@ export default function CamerasPage() {
                       <p style={{ margin: '0.2rem 0 0', fontSize: '13px', fontWeight: 700, color: 'var(--color-text-primary)' }}>256GB</p>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {camera.status === 'online' && (
+                <div style={{ marginTop: '1.25rem', paddingTop: '1.25rem', borderTop: '1px solid var(--color-border-tertiary)' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '14px', fontWeight: 600, cursor: 'pointer', color: 'var(--color-text-primary)' }}>
+                    <div style={{ position: 'relative' }}>
+                      <input
+                        type="checkbox"
+                        checked={camera.enable_face_recognition !== false}
+                        onChange={(e) => handleToggleFaceRecognition(camera.id, e.target.checked)}
+                        style={{ cursor: 'pointer', width: '18px', height: '18px' }}
+                      />
+                    </div>
+                    <span>🔍 AI Face Recognition: {(camera as any).enable_face_recognition !== false ? 'ACTIVE' : 'DISABLED'}</span>
+                  </label>
                 </div>
               )}
 
