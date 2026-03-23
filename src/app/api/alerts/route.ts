@@ -45,6 +45,10 @@ export async function GET() {
     let query = supabase.from('detections').select('*');
     
     if (orgId) {
+      // Attempt to set the session variable via RPC if the function exists
+      await supabase.rpc('set_app_org_id', { org_id: orgId }).catch(() => {
+        // Silently ignore if RPC doesn't exist, as the policy might have been updated instead
+      });
       query = query.eq('organization_id', orgId);
     }
 
@@ -55,7 +59,7 @@ export async function GET() {
       // Provide more helpful context for the common RLS parameter error
       if (error.message.includes('app.current_org_id')) {
         return NextResponse.json({ 
-          error: `Database RLS policy error on table "alerts": ${error.message}. Please update your RLS policy as instructed.` 
+          error: `Database RLS policy error: The "detections" table expects "app.current_org_id" to be set. Please run the SQL fix from the implementation plan in your Supabase SQL Editor.` 
         }, { status: 500 });
       }
       throw error;
