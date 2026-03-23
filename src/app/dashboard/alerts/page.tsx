@@ -16,6 +16,7 @@ interface Detection {
   resolved?: boolean
   severity?: string
   resolution_notes?: string
+  confidence: number
 }
 
 export default function AlertsPage() {
