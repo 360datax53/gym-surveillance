@@ -24,6 +24,21 @@ export async function GET() {
       }
     );
 
+    const { data: { session } } = await supabase.auth.getSession();
+    let orgId = null;
+    if (session) {
+      const { data: org } = await supabase
+        .from('organizations')
+        .select('id')
+        .eq('created_by', session.user.id)
+        .maybeSingle();
+      orgId = org?.id;
+    }
+
+    if (orgId) {
+      await supabase.rpc('set_app_org_id', { org_id: orgId });
+    }
+
     const { data, error } = await supabase
       .from('cameras')
       .select('*')
@@ -75,6 +90,10 @@ export async function POST(request: NextRequest) {
           .maybeSingle();
         orgId = org?.id;
       }
+    }
+
+    if (orgId) {
+      await supabase.rpc('set_app_org_id', { org_id: orgId });
     }
 
     const { data, error } = await supabase
