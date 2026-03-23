@@ -16,6 +16,7 @@ interface Camera {
   longitude?: number
   created_at: string
   enable_face_recognition?: boolean
+  organization_id: string
 }
 
 export default function CamerasPage() {
