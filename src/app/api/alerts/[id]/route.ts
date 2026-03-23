@@ -30,9 +30,9 @@ export async function PATCH(
     const body = await request.json();
     const alertId = params.id;
 
-    // We use the 'alerts' table for consistency with our other API routes
+    // We use the 'detections' table for consistency
     const { data, error } = await supabase
-      .from('alerts')
+      .from('detections')
       .update({
         resolved: body.resolved !== undefined ? body.resolved : true,
         resolution_notes: body.resolution_notes || null,
@@ -80,7 +80,7 @@ export async function GET(
     const alertId = params.id;
 
     const { data, error } = await supabase
-      .from('alerts')
+      .from('detections')
       .select('*')
       .eq('id', alertId)
       .single();

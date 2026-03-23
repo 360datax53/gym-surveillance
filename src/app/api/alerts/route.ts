@@ -30,23 +30,26 @@ export async function GET() {
     // 2. Fetch the user's organization
     let orgId = null;
     if (session) {
+      // Try fetching by created_by first, fallback to any organization if none found
       const { data: org } = await supabase
         .from('organizations')
         .select('id')
         .eq('created_by', session.user.id)
-        .single();
+        .limit(1)
+        .maybeSingle();
+      
       orgId = org?.id;
     }
     
-    // 3. Fetch alerts
-    let query = supabase.from('alerts').select('*');
+    // 3. Fetch detections (using the table name provided by user)
+    let query = supabase.from('detections').select('*');
     
     if (orgId) {
       query = query.eq('organization_id', orgId);
     }
 
     const { data, error } = await query
-      .order('created_at', { ascending: false }); // Using created_at as a fallback
+      .order('detection_time', { ascending: false });
 
     if (error) {
       // Provide more helpful context for the common RLS parameter error
