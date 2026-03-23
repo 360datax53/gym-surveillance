@@ -13,6 +13,8 @@ interface Member {
   registered_at: string
 }
 
+const ITEMS_PER_PAGE = 5
+
 export default function MembersPage() {
   const [members, setMembers] = useState<Member[]>([])
   const [filteredMembers, setFilteredMembers] = useState<Member[]>([])
@@ -20,6 +22,7 @@ export default function MembersPage() {
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {
     async function fetchMembers() {
@@ -60,7 +63,13 @@ export default function MembersPage() {
     }
 
     setFilteredMembers(results)
+    setCurrentPage(1)
   }, [searchTerm, statusFilter, members])
+
+  const totalPages = Math.ceil(filteredMembers.length / ITEMS_PER_PAGE)
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
+  const endIndex = startIndex + ITEMS_PER_PAGE
+  const paginatedMembers = filteredMembers.slice(startIndex, endIndex)
 
   if (loading) {
     return (
@@ -92,8 +101,23 @@ export default function MembersPage() {
     )
   }
 
+  const thStyle = {
+    padding: '1rem',
+    textAlign: 'left' as const,
+    borderBottom: '1px solid var(--color-border-secondary)',
+    fontWeight: 600,
+    fontSize: '14px',
+    color: 'var(--color-text-secondary)'
+  }
+
+  const tdStyle = {
+    padding: '1rem',
+    fontSize: '14px',
+    color: 'var(--color-text-primary)'
+  }
+
   return (
-    <div style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto' }}>
+    <div style={{ padding: '2rem', maxWidth: '1000px', margin: '0 auto' }}>
       <header style={{ marginBottom: '2rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
           <h1 style={{ fontSize: '2rem', fontWeight: 600 }}>Gym Members</h1>
@@ -146,7 +170,7 @@ export default function MembersPage() {
         <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
           <input
             type="text"
-            placeholder="Search by name, email, or phone..."
+            placeholder="Search by name, email, phone, or Card ID..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             style={{
@@ -180,7 +204,7 @@ export default function MembersPage() {
         </div>
 
         <div style={{ color: 'var(--color-text-tertiary)', fontSize: '14px' }}>
-          Total: {filteredMembers.length} members
+          Showing {filteredMembers.length > 0 ? startIndex + 1 : 0}-{Math.min(endIndex, filteredMembers.length)} of {filteredMembers.length} members
         </div>
       </header>
 
@@ -195,51 +219,117 @@ export default function MembersPage() {
           <p style={{ color: 'var(--color-text-tertiary)' }}>No members found matching your criteria.</p>
         </div>
       ) : (
-        <div style={{ display: 'grid', gap: '1rem' }}>
-          {filteredMembers.map((member) => (
-            <div 
-              key={member.id} 
-              style={{ 
-                padding: '1.5rem', 
-                border: '1px solid var(--color-border-tertiary)', 
-                borderRadius: 'var(--border-radius-lg)',
-                backgroundColor: 'var(--color-background-primary)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
-              }}
-            >
-              <div>
-                <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.1rem', fontWeight: 600 }}>{member.name}</h3>
-                <p style={{ margin: '0.25rem 0', color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>
-                  {member.email} • {member.phone}
-                </p>
-                <p style={{ margin: '0.25rem 0', color: 'var(--color-text-tertiary)', fontSize: '12px' }}>
-                  Card ID: {member.card_id || 'N/A'}
-                </p>
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <span style={{ 
-                  display: 'inline-block',
-                  padding: '0.4rem 0.8rem',
+        <>
+          <div style={{ 
+            overflowX: 'auto', 
+            marginBottom: '2rem',
+            backgroundColor: 'var(--color-background-primary)',
+            borderRadius: 'var(--border-radius-lg)',
+            border: '1px solid var(--color-border-secondary)',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+          }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ backgroundColor: 'var(--color-background-secondary)' }}>
+                  <th style={thStyle}>Name</th>
+                  <th style={thStyle}>Contact</th>
+                  <th style={thStyle}>Card ID</th>
+                  <th style={thStyle}>Status</th>
+                  <th style={thStyle}>Expires</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedMembers.map((member) => (
+                  <tr key={member.id} style={{ borderBottom: '1px solid var(--color-border-tertiary)' }}>
+                    <td style={{ ...tdStyle, fontWeight: 500 }}>{member.name}</td>
+                    <td style={tdStyle}>
+                      <div style={{ fontSize: '13px' }}>{member.email}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--color-text-tertiary)' }}>{member.phone}</div>
+                    </td>
+                    <td style={tdStyle}>{member.card_id || 'N/A'}</td>
+                    <td style={tdStyle}>
+                      <span style={{
+                        padding: '0.25rem 0.6rem',
+                        borderRadius: 'var(--border-radius-md)',
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        textTransform: 'uppercase',
+                        backgroundColor: member.membership_status === 'active' ? 'rgba(0, 200, 0, 0.1)' : 'rgba(211, 47, 47, 0.1)',
+                        color: member.membership_status === 'active' ? '#008000' : 'var(--color-text-danger)'
+                      }}>
+                        {member.membership_status}
+                      </span>
+                    </td>
+                    <td style={tdStyle}>
+                      {member.membership_end ? new Date(member.membership_end).toLocaleDateString() : '-'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {totalPages > 1 && (
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem', alignItems: 'center' }}>
+              <button
+                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                disabled={currentPage === 1}
+                style={{
+                  padding: '0.5rem 1rem',
+                  backgroundColor: 'var(--color-background-primary)',
+                  border: '1px solid var(--color-border-tertiary)',
                   borderRadius: 'var(--border-radius-md)',
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  textTransform: 'capitalize',
-                  backgroundColor: member.membership_status === 'active' ? 'rgba(0, 200, 0, 0.1)' : 'rgba(211, 47, 47, 0.1)',
-                  color: member.membership_status === 'active' ? '#008000' : 'var(--color-text-danger)',
-                  marginBottom: '0.5rem'
-                }}>
-                  {member.membership_status}
-                </span>
-                <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>
-                  Ends: {member.membership_end ? new Date(member.membership_end).toLocaleDateString() : '-'}
-                </p>
+                  color: currentPage === 1 ? 'var(--color-text-tertiary)' : 'var(--color-text-primary)',
+                  cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                  fontSize: '13px'
+                }}
+              >
+                ← Prev
+              </button>
+
+              <div style={{ display: 'flex', gap: '0.25rem' }}>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    style={{
+                      width: '32px',
+                      height: '32px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: currentPage === page ? 'var(--color-text-info)' : 'var(--color-background-primary)',
+                      color: currentPage === page ? 'white' : 'var(--color-text-primary)',
+                      border: '1px solid var(--color-border-tertiary)',
+                      borderRadius: 'var(--border-radius-md)',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontWeight: currentPage === page ? 600 : 400
+                    }}
+                  >
+                    {page}
+                  </button>
+                ))}
               </div>
+
+              <button
+                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                disabled={currentPage === totalPages}
+                style={{
+                  padding: '0.5rem 1rem',
+                  backgroundColor: 'var(--color-background-primary)',
+                  border: '1px solid var(--color-border-tertiary)',
+                  borderRadius: 'var(--border-radius-md)',
+                  color: currentPage === totalPages ? 'var(--color-text-tertiary)' : 'var(--color-text-primary)',
+                  cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                  fontSize: '13px'
+                }}
+              >
+                Next →
+              </button>
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
     </div>
   )
