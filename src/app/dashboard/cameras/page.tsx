@@ -308,6 +308,39 @@ export default function CamerasPage() {
                 </div>
               )}
 
+              <button
+                onClick={() => {
+                  if (window.confirm(`Delete camera "${camera.name}"? This cannot be undone.`)) {
+                    handleDeleteCamera(camera.id)
+                  }
+                }}
+                style={{
+                  marginTop: '1rem',
+                  width: '100%',
+                  padding: '0.75rem',
+                  backgroundColor: 'rgba(255, 82, 82, 0.1)',
+                  color: '#ff5252',
+                  border: '1px solid rgba(255, 82, 82, 0.2)',
+                  borderRadius: 'var(--border-radius-md)',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(255, 82, 82, 0.2)';
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(255, 82, 82, 0.1)';
+                }}
+              >
+                🗑️ Delete Camera
+              </button>
+
               {camera.status === 'online' ? (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.75rem' }}>
                   <button style={{
