@@ -11,6 +11,7 @@ interface Member {
   membership_status: string
   membership_end: string
   registered_at: string
+  face_image_url?: string
 }
 
 const ITEMS_PER_PAGE = 5
@@ -113,7 +114,8 @@ export default function MembersPage() {
   const tdStyle = {
     padding: '1rem',
     fontSize: '14px',
-    color: 'var(--color-text-primary)'
+    color: 'var(--color-text-primary)',
+    verticalAlign: 'middle' as const
   }
 
   return (
@@ -231,6 +233,7 @@ export default function MembersPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ backgroundColor: 'var(--color-background-secondary)' }}>
+                  <th style={{ ...thStyle, width: '60px' }}>Photo</th>
                   <th style={thStyle}>Name</th>
                   <th style={thStyle}>Contact</th>
                   <th style={thStyle}>Card ID</th>
@@ -241,6 +244,37 @@ export default function MembersPage() {
               <tbody>
                 {paginatedMembers.map((member) => (
                   <tr key={member.id} style={{ borderBottom: '1px solid var(--color-border-tertiary)' }}>
+                    <td style={tdStyle}>
+                      {member.face_image_url ? (
+                        <img
+                          src={member.face_image_url}
+                          alt={member.name}
+                          style={{
+                            width: '40px',
+                            height: '40px',
+                            borderRadius: '50%',
+                            objectFit: 'cover',
+                            border: '1px solid var(--color-border-tertiary)'
+                          }}
+                        />
+                      ) : (
+                        <div style={{
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '50%',
+                          backgroundColor: 'var(--color-background-secondary)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '16px',
+                          fontWeight: 600,
+                          color: 'var(--color-text-tertiary)',
+                          border: '1px solid var(--color-border-tertiary)'
+                        }}>
+                          {member.name.charAt(0).toUpperCase()}
+                        </div>
+                      )}
+                    </td>
                     <td style={{ ...tdStyle, fontWeight: 500 }}>{member.name}</td>
                     <td style={tdStyle}>
                       <div style={{ fontSize: '13px' }}>{member.email}</div>
