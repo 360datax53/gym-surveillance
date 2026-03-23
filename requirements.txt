@@ -1,0 +1,10 @@
+ultralytics
+opencv-python-headless
+pillow
+numpy
+flask
+flask-cors
+omegaconf
+deepface
+tf-keras
+tensorflow

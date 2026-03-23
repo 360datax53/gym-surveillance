@@ -18,3 +18,7 @@ yarn-error.log*
 .idea
 *.swp
 *.swo
+/venv
+/__pycache__
+*.pyc
+test_alert.py

@@ -4,13 +4,17 @@ import numpy as np
 from PIL import Image
 import io
 import base64
+from deepface import DeepFace
+import os
 
 class FaceDetector:
     def __init__(self):
         # Load YOLOv8 face detection model
         self.model = YOLO('yolov8n-face.pt')
         self.confidence_threshold = 0.5
-    
+        # Pre-load DeepFace model to avoid delay during first request
+        self.encoding_model = "Facenet" # Options: VGG-Face, Facenet, OpenFace, DeepFace
+        
     def detect_faces(self, image_source):
         """
         Detect faces in image
@@ -60,7 +64,7 @@ class FaceDetector:
     
     def extract_face_encoding(self, image_source, detection):
         """
-        Extract face embedding for comparison
+        Extract high-fidelity face embedding using DeepFace
         """
         try:
             if isinstance(image_source, str) and image_source.startswith('data:'):
@@ -71,18 +75,64 @@ class FaceDetector:
             else:
                 image = cv2.imread(image_source)
             
-            # Crop face region
+            # Crop face region with 10% padding for better feature extraction
             x, y, w, h = detection['x'], detection['y'], detection['width'], detection['height']
-            face_crop = image[y:y+h, x:x+w]
+            img_h, img_w = image.shape[:2]
             
-            # Generate embedding (simplified - use actual face encoding in production)
-            encoding = np.mean(face_crop.flatten())
+            pad_w = int(w * 0.1)
+            pad_h = int(h * 0.1)
+            
+            x1 = max(0, x - pad_w)
+            y1 = max(0, y - pad_h)
+            x2 = min(img_w, x + w + pad_w)
+            y2 = min(img_h, h + h + pad_h)
+            
+            face_crop = image[y1:y2, x1:x2]
+            
+            # Generate actual facial embedding
+            # align=True ensures the face is normalized before encoding
+            results = DeepFace.represent(
+                img_path=face_crop, 
+                model_name=self.encoding_model, 
+                enforce_detection=False,
+                align=True
+            )
+            
+            if results and len(results) > 0:
+                encoding = results[0]["embedding"]
+                return {
+                    'success': True,
+                    'encoding': encoding,
+                    'model': self.encoding_model
+                }
+            
+            return {'success': False, 'error': 'No face features extracted'}
+        
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e)
+            }
+
+    def compare_faces(self, encoding_a, encoding_b, threshold=0.4):
+        """
+        Compare two encodings using Cosine similarity
+        A lower distance means more similarity
+        """
+        try:
+            # DeepFace uses 1 - cosine_similarity for distance
+            # For Facenet, 0.4 is a common threshold for Cosine distance
+            from scipy.spatial.distance import cosine
+            
+            distance = cosine(encoding_a, encoding_b)
+            is_match = distance < threshold
             
             return {
                 'success': True,
-                'encoding': float(encoding)
+                'distance': float(distance),
+                'match': bool(is_match),
+                'threshold': threshold
             }
-        
         except Exception as e:
             return {
                 'success': False,
