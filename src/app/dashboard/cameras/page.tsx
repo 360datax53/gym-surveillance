@@ -73,12 +73,20 @@ export default function CamerasPage() {
 
   return (
     <div style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto' }}>
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.5; transform: scale(1.2); }
+        }
+      `}</style>
+      
       <header style={{ marginBottom: '2.5rem' }}>
         <h1 style={{ fontSize: '2.25rem', fontWeight: 700, marginBottom: '0.5rem', color: 'var(--color-text-primary)' }}>Cameras & Hardware</h1>
         <p style={{ color: 'var(--color-text-secondary)', margin: 0 }}>Monitor and manage your surveillance network in real-time.</p>
       </header>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
+        {/* ... stats cards ... */}
         <div style={{
           backgroundColor: 'var(--color-background-primary)',
           border: '1px solid var(--color-border-secondary)',
@@ -114,83 +122,145 @@ export default function CamerasPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '1.5rem' }}>
         {cameras.map((camera) => (
           <div key={camera.id} style={{
             backgroundColor: 'var(--color-background-primary)',
             border: '1px solid var(--color-border-secondary)',
             borderRadius: 'var(--border-radius-lg)',
-            padding: '1.75rem',
+            overflow: 'hidden',
             boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
             transition: 'transform 0.2s ease-in-out',
-            cursor: 'default'
+            display: 'flex',
+            flexDirection: 'column'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
-              <div>
-                <h3 style={{ margin: '0 0 0.4rem', fontSize: '1.15rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>
-                  📹 {camera.name}
-                </h3>
-                <span style={{ 
-                  fontSize: '0.85rem', 
-                  color: 'var(--color-text-secondary)',
-                  backgroundColor: 'var(--color-background-secondary)',
-                  padding: '0.2rem 0.6rem',
-                  borderRadius: 'var(--border-radius-md)',
+            {/* Camera Preview / Placeholder */}
+            <div style={{
+              width: '100%',
+              height: '180px',
+              backgroundColor: '#0a0a0a',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              position: 'relative',
+              backgroundImage: 'radial-gradient(circle at center, #1a1a1a 0%, #0a0a0a 100%)',
+              borderBottom: '1px solid var(--color-border-tertiary)'
+            }}>
+              {camera.status === 'online' ? (
+                <div style={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  alignItems: 'center', 
+                  color: 'rgba(255,255,255,0.4)',
+                  fontSize: '12px',
                   fontWeight: 500
                 }}>
-                  {camera.zone ? camera.zone.toUpperCase() : 'GENERAL ZONE'}
-                </span>
-              </div>
-              <span style={{
-                padding: '0.4rem 0.8rem',
-                borderRadius: '20px',
-                fontSize: '11px',
-                fontWeight: 700,
-                backgroundColor: camera.status === 'online' ? 'rgba(0, 200, 83, 0.1)' : 'rgba(255, 82, 82, 0.1)',
-                color: camera.status === 'online' ? '#00c853' : '#ff5252',
-                border: camera.status === 'online' ? '1px solid rgba(0, 200, 83, 0.2)' : '1px solid rgba(255, 82, 82, 0.2)'
-              }}>
-                {camera.status === 'online' ? '● ONLINE' : '● OFFLINE'}
-              </span>
-            </div>
-
-            <div style={{ 
-              display: 'grid', 
-              gap: '0.75rem', 
-              paddingTop: '1.25rem', 
-              borderTop: '1px solid var(--color-border-tertiary)' 
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                <span style={{ color: 'var(--color-text-tertiary)' }}>Device ID</span>
-                <span style={{ color: 'var(--color-text-secondary)', fontWeight: 500 }}>{camera.camera_id}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                <span style={{ color: 'var(--color-text-tertiary)' }}>Model Type</span>
-                <span style={{ color: 'var(--color-text-secondary)', fontWeight: 500, textTransform: 'capitalize' }}>{camera.camera_type}</span>
-              </div>
-              {camera.rtsp_url && (
-                <div style={{ marginTop: '0.5rem' }}>
-                  <p style={{ margin: '0 0 0.4rem', fontSize: '12px', color: 'var(--color-text-tertiary)', fontWeight: 600 }}>Stream URL</p>
-                  <p style={{ 
-                    margin: 0, 
-                    fontSize: '11px', 
-                    color: 'var(--color-text-info)', 
-                    wordBreak: 'break-all',
-                    backgroundColor: 'rgba(0, 120, 212, 0.05)',
-                    padding: '0.5rem',
+                  <div style={{ fontSize: '32px', marginBottom: '0.5rem', filter: 'drop-shadow(0 0 8px rgba(0,200,83,0.3))' }}>🎥</div>
+                  LIVE STREAM ACTIVE
+                  <div style={{
+                    position: 'absolute',
+                    top: '16px',
+                    right: '16px',
+                    width: '10px',
+                    height: '10px',
+                    borderRadius: '50%',
+                    backgroundColor: '#ff5252',
+                    boxShadow: '0 0 10px #ff5252',
+                    animation: 'pulse 1.5s infinite linear'
+                  }} />
+                  <div style={{
+                    position: 'absolute',
+                    bottom: '12px',
+                    left: '12px',
+                    backgroundColor: 'rgba(0,0,0,0.6)',
+                    padding: '2px 8px',
                     borderRadius: '4px',
-                    fontFamily: 'monospace'
+                    fontSize: '10px',
+                    fontFamily: 'monospace',
+                    color: '#00c853'
                   }}>
-                    {camera.rtsp_url}
-                  </p>
+                    REC 00:00:24
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', color: 'rgba(255,255,255,0.2)' }}>
+                  <div style={{ fontSize: '32px', marginBottom: '0.5rem' }}>📵</div>
+                  <div style={{ fontSize: '11px', letterSpacing: '0.1em' }}>SIGNAL LOST</div>
                 </div>
               )}
-              <div style={{ marginTop: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
-                <span style={{ color: 'var(--color-text-tertiary)' }}>Geolocation</span>
-                <span style={{ color: 'var(--color-text-secondary)' }}>
-                  {camera.latitude ? `${camera.latitude.toFixed(4)}, ${camera.longitude?.toFixed(4)}` : 'N/A'}
+            </div>
+
+            <div style={{ padding: '1.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+                <div>
+                  <h3 style={{ margin: '0 0 0.4rem', fontSize: '1.15rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>
+                    {camera.name}
+                  </h3>
+                  <span style={{ 
+                    fontSize: '0.8rem', 
+                    color: 'var(--color-text-secondary)',
+                    backgroundColor: 'var(--color-background-secondary)',
+                    padding: '0.2rem 0.6rem',
+                    borderRadius: 'var(--border-radius-md)',
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.02em'
+                  }}>
+                    {camera.zone ? camera.zone : 'GENERAL ZONE'}
+                  </span>
+                </div>
+                <span style={{
+                  padding: '0.4rem 0.8rem',
+                  borderRadius: '20px',
+                  fontSize: '10px',
+                  fontWeight: 800,
+                  backgroundColor: camera.status === 'online' ? 'rgba(0, 200, 83, 0.1)' : 'rgba(255, 82, 82, 0.1)',
+                  color: camera.status === 'online' ? '#00c853' : '#ff5252',
+                  border: camera.status === 'online' ? '1px solid rgba(0, 200, 83, 0.2)' : '1px solid rgba(255, 82, 82, 0.2)',
+                  letterSpacing: '0.05em'
+                }}>
+                  {camera.status === 'online' ? '● ONLINE' : '● OFFLINE'}
                 </span>
               </div>
+
+              <div style={{ 
+                display: 'grid', 
+                gap: '0.6rem', 
+                padding: '1rem 0', 
+                borderTop: '1px solid var(--color-border-tertiary)',
+                fontSize: '13px'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--color-text-tertiary)' }}>Device ID</span>
+                  <span style={{ color: 'var(--color-text-secondary)', fontWeight: 500 }}>{camera.camera_id}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--color-text-tertiary)' }}>Model</span>
+                  <span style={{ color: 'var(--color-text-secondary)', fontWeight: 500, textTransform: 'capitalize' }}>{camera.camera_type}</span>
+                </div>
+              </div>
+
+              {camera.status === 'online' && (
+                <button style={{
+                  width: '100%',
+                  marginTop: '0.5rem',
+                  padding: '0.75rem',
+                  backgroundColor: 'var(--color-text-info)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: 'var(--border-radius-md)',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'background-color 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}>
+                  📺 View Live Stream
+                </button>
+              )}
             </div>
           </div>
         ))}
