@@ -10,7 +10,8 @@ import os
 class FaceDetector:
     def __init__(self):
         # Load YOLOv8 face detection model
-        self.model = YOLO('yolov8n-face.pt')
+        model_path = os.path.join(os.path.dirname(__file__), 'yolov8n-face.pt')
+        self.model = YOLO(model_path)
         self.confidence_threshold = 0.5
         # Pre-load DeepFace model to avoid delay during first request
         self.encoding_model = "Facenet" # Options: VGG-Face, Facenet, OpenFace, DeepFace

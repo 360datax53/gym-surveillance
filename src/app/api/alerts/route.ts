@@ -101,7 +101,7 @@ export async function POST(request: Request) {
     let aiMetadata = { ...metadata };
     if (image_url && image_url.startsWith('data:')) {
       try {
-        const aiResponse = await fetch('http://localhost:5001/detect', {
+        const aiResponse = await fetch('http://localhost:5005/api/detect-face', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ image: image_url })
