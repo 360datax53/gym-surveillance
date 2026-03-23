@@ -95,7 +95,30 @@ export default function MembersPage() {
   return (
     <div style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto' }}>
       <header style={{ marginBottom: '2rem' }}>
-        <h1 style={{ fontSize: '2rem', fontWeight: 600, marginBottom: '1.5rem' }}>Gym Members</h1>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <h1 style={{ fontSize: '2rem', fontWeight: 600 }}>Gym Members</h1>
+          <a 
+            href="/api/members/export?format=csv" 
+            download
+            style={{
+              padding: '0.6rem 1.2rem',
+              backgroundColor: 'var(--color-text-info)',
+              color: 'white',
+              textDecoration: 'none',
+              borderRadius: 'var(--border-radius-md)',
+              fontSize: '14px',
+              fontWeight: 500,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              transition: 'opacity 0.2s'
+            }}
+            onMouseOver={(e) => (e.currentTarget.style.opacity = '0.9')}
+            onMouseOut={(e) => (e.currentTarget.style.opacity = '1')}
+          >
+            <span>📥</span> Download CSV
+          </a>
+        </div>
         
         <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
           <input
