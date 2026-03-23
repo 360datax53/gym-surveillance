@@ -61,6 +61,25 @@ export default function CamerasPage() {
     }
   }
 
+  const handleDeleteCamera = async (cameraId: string) => {
+    try {
+      const response = await fetch(`/api/cameras/${cameraId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' }
+      })
+      
+      if (!response.ok) throw new Error('Failed to delete')
+      
+      // Update local state
+      setCameras(prev => prev.filter(cam => cam.id !== cameraId));
+      
+      alert('Camera deleted successfully')
+    } catch (error) {
+      console.error('Error:', error)
+      alert('Failed to delete camera')
+    }
+  }
+
   useEffect(() => {
     fetchCameras()
   }, [])

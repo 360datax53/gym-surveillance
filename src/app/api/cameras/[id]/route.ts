@@ -45,3 +45,45 @@ export async function PATCH(
     );
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const cookieStore = cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          },
+        },
+      }
+    );
+
+    const cameraId = params.id;
+
+    const { error } = await supabase
+      .from('cameras')
+      .delete()
+      .eq('id', cameraId);
+
+    if (error) throw error;
+    
+    return NextResponse.json({ success: true });
+  } catch (error: any) {
+    console.error('DELETE /api/cameras/[id] error:', error);
+    return NextResponse.json(
+      { error: error.message || 'Failed to delete camera' },
+      { status: 500 }
+    );
+  }
+}
