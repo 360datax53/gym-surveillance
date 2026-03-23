@@ -7,14 +7,19 @@ interface Member {
   name: string
   email: string
   phone: string
+  card_id: string
   membership_status: string
   membership_end: string
+  registered_at: string
 }
 
 export default function MembersPage() {
   const [members, setMembers] = useState<Member[]>([])
+  const [filteredMembers, setFilteredMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
 
   useEffect(() => {
     async function fetchMembers() {
@@ -26,6 +31,7 @@ export default function MembersPage() {
         }
         const data = await response.json()
         setMembers(data.members || [])
+        setFilteredMembers(data.members || [])
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An error occurred')
       } finally {
@@ -35,6 +41,26 @@ export default function MembersPage() {
 
     fetchMembers()
   }, [])
+
+  useEffect(() => {
+    let results = members
+
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase()
+      results = results.filter(m =>
+        m.name.toLowerCase().includes(term) ||
+        m.email.toLowerCase().includes(term) ||
+        m.phone.includes(term) ||
+        (m.card_id && m.card_id.toLowerCase().includes(term))
+      )
+    }
+
+    if (statusFilter !== 'all') {
+      results = results.filter(m => m.membership_status === statusFilter)
+    }
+
+    setFilteredMembers(results)
+  }, [searchTerm, statusFilter, members])
 
   if (loading) {
     return (
@@ -68,14 +94,51 @@ export default function MembersPage() {
 
   return (
     <div style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto' }}>
-      <header style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h1 style={{ fontSize: '2rem' }}>Gym Members</h1>
-        <span style={{ color: 'var(--color-text-secondary)' }}>
-          Total: {members.length}
-        </span>
+      <header style={{ marginBottom: '2rem' }}>
+        <h1 style={{ fontSize: '2rem', fontWeight: 600, marginBottom: '1.5rem' }}>Gym Members</h1>
+        
+        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
+          <input
+            type="text"
+            placeholder="Search by name, email, or phone..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{
+              flex: 1,
+              padding: '0.75rem',
+              backgroundColor: 'var(--color-background-primary)',
+              border: '1px solid var(--color-border-tertiary)',
+              borderRadius: 'var(--border-radius-md)',
+              fontSize: '14px',
+              color: 'var(--color-text-primary)'
+            }}
+          />
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            style={{
+              padding: '0.75rem',
+              backgroundColor: 'var(--color-background-primary)',
+              border: '1px solid var(--color-border-tertiary)',
+              borderRadius: 'var(--border-radius-md)',
+              fontSize: '14px',
+              color: 'var(--color-text-primary)',
+              minWidth: '150px'
+            }}
+          >
+            <option value="all">All Status</option>
+            <option value="active">Active</option>
+            <option value="suspended">Suspended</option>
+            <option value="expired">Expired</option>
+          </select>
+        </div>
+
+        <div style={{ color: 'var(--color-text-tertiary)', fontSize: '14px' }}>
+          Total: {filteredMembers.length} members
+        </div>
       </header>
 
-      {members.length === 0 ? (
+      {filteredMembers.length === 0 ? (
         <div style={{ 
           padding: '3rem', 
           textAlign: 'center', 
@@ -83,44 +146,49 @@ export default function MembersPage() {
           borderRadius: 'var(--border-radius-lg)',
           border: '1px dashed var(--color-border-secondary)'
         }}>
-          <p>No members found in the database.</p>
+          <p style={{ color: 'var(--color-text-tertiary)' }}>No members found matching your criteria.</p>
         </div>
       ) : (
         <div style={{ display: 'grid', gap: '1rem' }}>
-          {members.map((member) => (
+          {filteredMembers.map((member) => (
             <div 
               key={member.id} 
               style={{ 
                 padding: '1.5rem', 
                 border: '1px solid var(--color-border-tertiary)', 
                 borderRadius: 'var(--border-radius-lg)',
-                backgroundColor: 'var(--color-background-tertiary)',
+                backgroundColor: 'var(--color-background-primary)',
                 display: 'flex',
                 justifyContent: 'space-between',
-                alignItems: 'center'
+                alignItems: 'center',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
               }}
             >
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.1rem' }}>{member.name}</h3>
+                <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.1rem', fontWeight: 600 }}>{member.name}</h3>
                 <p style={{ margin: '0.25rem 0', color: 'var(--color-text-secondary)', fontSize: '0.9rem' }}>
                   {member.email} • {member.phone}
+                </p>
+                <p style={{ margin: '0.25rem 0', color: 'var(--color-text-tertiary)', fontSize: '12px' }}>
+                  Card ID: {member.card_id || 'N/A'}
                 </p>
               </div>
               <div style={{ textAlign: 'right' }}>
                 <span style={{ 
                   display: 'inline-block',
-                  padding: '0.25rem 0.75rem',
-                  borderRadius: '1rem',
-                  fontSize: '0.8rem',
+                  padding: '0.4rem 0.8rem',
+                  borderRadius: 'var(--border-radius-md)',
+                  fontSize: '0.75rem',
+                  fontWeight: 600,
                   textTransform: 'capitalize',
-                  backgroundColor: member.membership_status === 'active' ? 'rgba(0, 200, 0, 0.1)' : 'var(--color-background-danger)',
+                  backgroundColor: member.membership_status === 'active' ? 'rgba(0, 200, 0, 0.1)' : 'rgba(211, 47, 47, 0.1)',
                   color: member.membership_status === 'active' ? '#008000' : 'var(--color-text-danger)',
                   marginBottom: '0.5rem'
                 }}>
                   {member.membership_status}
                 </span>
-                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--color-text-tertiary)' }}>
-                  Ends: {new Date(member.membership_end).toLocaleDateString()}
+                <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>
+                  Ends: {member.membership_end ? new Date(member.membership_end).toLocaleDateString() : '-'}
                 </p>
               </div>
             </div>
