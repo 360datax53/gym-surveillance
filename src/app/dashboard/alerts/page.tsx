@@ -34,13 +34,15 @@ export default function AlertsPage() {
       const response = await fetch('/api/alerts')
       if (!response.ok) {
         const errorData = await response.json()
+        console.log('Error fetching alerts:', errorData.error)
         throw new Error(errorData.error || 'Failed to fetch alerts')
       }
       const data = await response.json()
+      console.log('Fetched alerts data:', data)
       setAlerts(data.alerts || [])
       setFilteredAlerts(data.alerts || [])
     } catch (err: any) {
-      console.error('Error fetching alerts:', err)
+      console.error('Fetch error:', err)
       setError(err.message || 'An error occurred')
     } finally {
       setLoading(false)
