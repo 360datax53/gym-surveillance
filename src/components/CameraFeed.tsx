@@ -152,23 +152,25 @@ export default function CameraFeed({ camera, organizationId }: CameraFeedProps) 
         }
       }
 
-      // Draw green AI detection boxes
+      // Draw AI detection boxes
+      // Green = face detected, Yellow = person/body detected (overhead camera)
       detections.forEach((det: any) => {
         const x = det.x * canvas.width
         const y = det.y * canvas.height
         const w = det.width * canvas.width
         const h = det.height * canvas.height
+        const isFace = det.type === 'face' || !det.type
 
-        ctx.strokeStyle = '#00ff00'
+        ctx.strokeStyle = isFace ? '#00ff00' : '#ffcc00'
         ctx.lineWidth = 2
         ctx.strokeRect(x, y, w, h)
 
-        // Label
-        ctx.fillStyle = 'rgba(0, 255, 0, 0.7)'
-        ctx.fillRect(x, y - 20, Math.min(100, w), 20)
+        // Label background
+        ctx.fillStyle = isFace ? 'rgba(0,255,0,0.75)' : 'rgba(255,204,0,0.75)'
+        ctx.fillRect(x, y - 20, Math.min(110, w), 20)
         ctx.fillStyle = 'black'
-        ctx.font = 'bold 12px Inter, sans-serif'
-        ctx.fillText(`${Math.round(det.confidence * 100)}%`, x + 5, y - 5)
+        ctx.font = 'bold 11px Inter, sans-serif'
+        ctx.fillText(`${isFace ? 'FACE' : 'PERSON'} ${Math.round(det.confidence * 100)}%`, x + 4, y - 5)
       })
 
       // Member match overlay

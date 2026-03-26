@@ -1,7 +1,7 @@
 import os
 import threading
 import cv2
-from datetime import datetime
+from datetime import datetime, timezone
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from face_detector import FaceDetector
@@ -20,6 +20,29 @@ detector = FaceDetector()
 supabase_url = os.environ.get("NEXT_PUBLIC_SUPABASE_URL")
 supabase_key = os.environ.get("NEXT_PUBLIC_SUPABASE_ANON_KEY")
 supabase: Client = create_client(supabase_url, supabase_key)
+
+# RTSP credentials - loaded from .env, never from the database
+RTSP_USERNAME = os.environ.get("RTSP_USERNAME", "")
+RTSP_PASSWORD = os.environ.get("RTSP_PASSWORD", "")
+RTSP_HOST = os.environ.get("RTSP_HOST", "")
+RTSP_PORT = os.environ.get("RTSP_PORT", "554")
+
+def secure_rtsp_url(rtsp_url: str) -> str:
+    """
+    Inject credentials from .env into an RTSP URL.
+    Strips any existing credentials from the DB first for safety.
+    e.g. rtsp://snap-dartford.dyndns.org:554/Streaming/Channels/102
+      -> rtsp://operator:smart1976@snap-dartford.dyndns.org:554/Streaming/Channels/102
+    """
+    if not rtsp_url:
+        return rtsp_url
+    # Strip any existing embedded credentials
+    import re
+    clean = re.sub(r'rtsp://[^@]+@', 'rtsp://', rtsp_url)
+    # Inject from env
+    if RTSP_USERNAME and RTSP_PASSWORD:
+        clean = clean.replace('rtsp://', f'rtsp://{RTSP_USERNAME}:{RTSP_PASSWORD}@', 1)
+    return clean
 
 # Global dictionary to track active processors
 active_processors = {}
@@ -73,11 +96,14 @@ class RTSPStreamProcessor:
                 # Store the latest frame for the streaming endpoint
                 self.latest_frame = frame
                 
-                # Process every 20th frame for AI (was 10th - further reducing load)
+                # Process every 20th frame for AI
                 if frame_count % 20 == 0:
                     results = detector.detect_faces(frame)
-                    if results['success'] and results['face_count'] > 0:
-                        self._handle_detections(results['detections'], frame)
+                    if results['success']:
+                        # Always update — clears boxes when person moves away
+                        self.latest_detections = results['detections'] if results['face_count'] > 0 else []
+                        if results['face_count'] > 0:
+                            self._handle_detections(results['detections'], frame)
                 
                 frame_count += 1
             except Exception as e:
@@ -96,14 +122,14 @@ class RTSPStreamProcessor:
                     'y': det['y'],
                     'width': det['width'],
                     'height': det['height'],
-                    'created_at': datetime.utcnow().isoformat()
+                    'created_at': datetime.now(timezone.utc).isoformat()
                 })
             
             # Store detections for the polling endpoint (OUTSIDE the loop)
             self.latest_detections = db_entries
             
             if db_entries:
-                supabase.table('face_detections').insert(db_entries).execute()
+                supabase.table('detections').insert(db_entries).execute()
         except Exception as e:
             print(f"Error storing detections for {self.camera_id}: {e}")
 
@@ -137,7 +163,7 @@ def process_rtsp():
         if camera_id in active_processors and active_processors[camera_id].is_running:
             return jsonify({'status': 'already_processing', 'camera_id': camera_id})
         
-        processor = RTSPStreamProcessor(camera_id, rtsp_url)
+        processor = RTSPStreamProcessor(camera_id, secure_rtsp_url(rtsp_url))
         processor.start()
         active_processors[camera_id] = processor
         
@@ -184,7 +210,7 @@ def get_detections(camera_id):
         return jsonify({
             'camera_id': camera_id,
             'detections': getattr(proc, 'latest_detections', []),
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now(timezone.utc).isoformat()
         })
     return jsonify({'error': 'No active processor', 'detections': [], 'id_searched': camera_id}), 404
 
@@ -205,7 +231,8 @@ def snapshot_camera(camera_id):
         try:
             camera_data = supabase.table('cameras').select('rtsp_url').eq('id', camera_id).single().execute()
             if camera_data.data and camera_data.data['rtsp_url']:
-                processor = RTSPStreamProcessor(camera_id, camera_data.data['rtsp_url'])
+                rtsp_url = secure_rtsp_url(camera_data.data['rtsp_url'])
+                processor = RTSPStreamProcessor(camera_id, rtsp_url)
                 processor.start()
                 active_processors[camera_id] = processor
                 # Give it a moment to capture first frame
