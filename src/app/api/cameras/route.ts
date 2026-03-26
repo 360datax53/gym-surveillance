@@ -133,3 +133,45 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+export async function PATCH(request: NextRequest) {
+  try {
+    const cookieStore = cookies();
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() { return cookieStore.getAll(); },
+          setAll(cookiesToSet) { cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options)); },
+        },
+      }
+    );
+
+    const body = await request.json();
+    const { id, name, zone } = body;
+
+    if (!id) {
+       return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+    }
+
+    const updates: any = {};
+    if (name) updates.name = name;
+    if (zone) updates.zone = zone;
+
+    const { data, error } = await supabase
+      .from('cameras')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return NextResponse.json(data);
+  } catch (error: any) {
+    console.error('PATCH /api/cameras error:', error);
+    return NextResponse.json({ error: error.message || 'Failed to update camera' }, { status: 500 });
+  }
+}
+

@@ -25,6 +25,8 @@ export default function CamerasPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [settingsOpenId, setSettingsOpenId] = useState<string | null>(null)
+  const [editFormData, setEditFormData] = useState({ name: '', zone: '' })
+  const [isSaving, setIsSaving] = useState(false)
   const [processingStatus, setProcessingStatus] = useState<{[key: string]: boolean}>({})
   const router = useRouter()
 
@@ -118,6 +120,38 @@ export default function CamerasPage() {
     } catch (error) {
       console.error('Error:', error)
       alert('Failed to delete camera')
+    }
+  }
+
+  const handleOpenSettings = (camera: Camera) => {
+    if (settingsOpenId !== camera.id) {
+      setEditFormData({ name: camera.name, zone: camera.zone || '' })
+      setSettingsOpenId(camera.id)
+    } else {
+      setSettingsOpenId(null)
+    }
+  }
+
+  const handleUpdateCamera = async (cameraId: string) => {
+    if (!editFormData.name.trim()) return
+    setIsSaving(true)
+    try {
+      const response = await fetch('/api/cameras', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: cameraId, name: editFormData.name, zone: editFormData.zone })
+      })
+      if (!response.ok) throw new Error('Failed to update')
+      
+      setCameras(prev => prev.map(cam => 
+        cam.id === cameraId ? { ...cam, name: editFormData.name, zone: editFormData.zone } : cam
+      ))
+      setSettingsOpenId(null)
+    } catch (error) {
+      console.error('Error:', error)
+      alert('Failed to update camera settings.')
+    } finally {
+      setIsSaving(false)
     }
   }
 
@@ -280,7 +314,7 @@ export default function CamerasPage() {
                       {camera.zone ? camera.zone : 'GENERAL ZONE'}
                     </span>
                     <button 
-                      onClick={() => setSettingsOpenId(settingsOpenId === camera.id ? null : camera.id)}
+                      onClick={() => handleOpenSettings(camera)}
                       style={{
                         background: 'none',
                         border: 'none',
@@ -381,13 +415,63 @@ export default function CamerasPage() {
                 <div style={{ 
                   marginTop: '1.5rem', 
                   padding: '1.5rem', 
-                  backgroundColor: 'rgba(255, 82, 82, 0.05)', 
+                  backgroundColor: 'var(--color-background-secondary)', 
                   borderRadius: 'var(--border-radius-md)',
-                  border: '1px solid rgba(255, 82, 82, 0.2)'
+                  border: '1px solid var(--color-border-tertiary)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '1rem'
                 }}>
-                  <p style={{ margin: '0 0 1rem', fontSize: '11px', fontWeight: 800, color: '#ff5252', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    ⚠️ Danger Zone
-                  </p>
+                  {/* Edit Form */}
+                  <div>
+                    <h4 style={{ margin: '0 0 1rem', fontSize: '12px', fontWeight: 700, textTransform: 'uppercase', color: 'var(--color-text-secondary)', letterSpacing: '0.05em' }}>
+                      Edit Camera Info
+                    </h4>
+                    <div style={{ display: 'grid', gap: '0.75rem' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--color-text-tertiary)', marginBottom: '4px' }}>Camera Name (matches video feed)</label>
+                        <input 
+                          value={editFormData.name}
+                          onChange={e => setEditFormData(prev => ({ ...prev, name: e.target.value }))}
+                          style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--color-border-secondary)', backgroundColor: 'var(--color-background-primary)', color: 'var(--color-text-primary)' }}
+                        />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '11px', fontWeight: 600, color: 'var(--color-text-tertiary)', marginBottom: '4px' }}>Zone Tag</label>
+                        <input 
+                          value={editFormData.zone}
+                          onChange={e => setEditFormData(prev => ({ ...prev, zone: e.target.value }))}
+                          style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--color-border-secondary)', backgroundColor: 'var(--color-background-primary)', color: 'var(--color-text-primary)' }}
+                        />
+                      </div>
+                      <button
+                        onClick={() => handleUpdateCamera(camera.id)}
+                        disabled={isSaving}
+                        style={{
+                          width: '100%',
+                          padding: '0.6rem',
+                          backgroundColor: '#2563eb',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          fontSize: '13px',
+                          fontWeight: 600,
+                          cursor: isSaving ? 'wait' : 'pointer',
+                          marginTop: '0.5rem'
+                        }}
+                      >
+                        {isSaving ? 'Saving...' : 'Save Changes'}
+                      </button>
+                    </div>
+                  </div>
+
+                  <hr style={{ border: 'none', borderTop: '1px solid var(--color-border-tertiary)', margin: '0.5rem 0' }} />
+
+                  {/* Danger Zone */}
+                  <div>
+                    <p style={{ margin: '0 0 1rem', fontSize: '11px', fontWeight: 800, color: '#ff5252', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      ⚠️ Danger Zone
+                    </p>
                   <button
                     onClick={() => handleDeleteCamera(camera.id, camera.name)}
                     style={{
@@ -413,6 +497,7 @@ export default function CamerasPage() {
                   <p style={{ margin: '0.75rem 0 0', fontSize: '10px', color: 'var(--color-text-tertiary)', textAlign: 'center' }}>
                     This action requires typing the camera name to confirm.
                   </p>
+                 </div>
                 </div>
               )}
 
