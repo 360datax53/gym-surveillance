@@ -103,6 +103,34 @@ export default function HeatmapPage() {
     return '0 0 10px rgba(34, 197, 94, 0.6)'
   }
 
+  const getHeatBlob = (stats?: ZoneStat) => {
+    if (!stats) return null
+    const intensity = stats.peak
+    
+    if (intensity > 20) {
+      return {
+        background: `radial-gradient(circle, rgba(239,68,68,0.85) 0%, rgba(245,158,11,0.5) 40%, transparent 70%)`,
+        size: '300px'
+      }
+    }
+    if (intensity > 10) {
+      return {
+        background: `radial-gradient(circle, rgba(245,158,11,0.8) 0%, rgba(252,211,77,0.5) 40%, transparent 70%)`,
+        size: '250px'
+      }
+    }
+    if (intensity > 5) {
+      return {
+        background: `radial-gradient(circle, rgba(252,211,77,0.8) 0%, rgba(34,197,94,0.4) 50%, transparent 70%)`,
+        size: '200px'
+      }
+    }
+    return {
+       background: `radial-gradient(circle, rgba(34,197,94,0.7) 0%, rgba(59,130,246,0.3) 50%, transparent 70%)`,
+       size: '150px'
+    }
+  }
+
   const handleMapClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!isEditMode || !placingCameraId) return
     const rect = e.currentTarget.getBoundingClientRect()
@@ -208,8 +236,8 @@ export default function HeatmapPage() {
             )}
             
             <div 
-              className={`relative w-full aspect-video bg-gray-900 rounded-2xl overflow-hidden border-2 shadow-2xl ${
-                isEditMode && placingCameraId ? 'cursor-crosshair border-blue-500 ring-4 ring-blue-500/20' : 'border-gray-800'
+              className={`relative w-full aspect-video bg-white rounded-2xl overflow-hidden border-2 shadow-2xl ${
+                isEditMode && placingCameraId ? 'cursor-crosshair border-blue-500 ring-4 ring-blue-500/20' : 'border-gray-200'
               }`}
               onClick={handleMapClick}
               style={{
@@ -234,13 +262,27 @@ export default function HeatmapPage() {
                     className="absolute group -translate-x-1/2 -translate-y-1/2 transition-all duration-500 ease-out z-10"
                     style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
                   >
-                    {/* Glowing Heat Marker */}
+                    {/* Organic Heat Blob (Underneath) */}
+                    {stats && (
+                      <div 
+                        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none rounded-full"
+                        style={{
+                          width: getHeatBlob(stats)?.size,
+                          height: getHeatBlob(stats)?.size,
+                          background: getHeatBlob(stats)?.background,
+                          filter: 'blur(20px)',
+                          mixBlendMode: 'multiply',
+                          opacity: 0.9,
+                          transition: 'all 2s ease-in-out'
+                        }}
+                      />
+                    )}
+
+                    {/* Anchor point for editing/hovering */}
                     <div 
-                      className="w-6 h-6 rounded-full border-2 border-white/50 backdrop-blur-sm cursor-pointer transition-transform group-hover:scale-125"
-                      style={{ 
-                        backgroundColor: getMarkerColor(stats),
-                        boxShadow: getMarkerShadow(stats)
-                      }}
+                      className={`w-4 h-4 rounded-full border-2 border-gray-900 cursor-pointer transition-transform group-hover:scale-150 relative z-20 ${
+                        isEditMode ? 'bg-white shadow-[0_0_10px_black]' : 'bg-transparent border-transparent'
+                      }`}
                     />
                     
                     {/* Tooltip */}
