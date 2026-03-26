@@ -17,6 +17,7 @@ interface Camera {
   created_at: string
   enable_face_recognition?: boolean
   organization_id: string
+  is_processing?: boolean
 }
 
 export default function CamerasPage() {
@@ -24,6 +25,7 @@ export default function CamerasPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [settingsOpenId, setSettingsOpenId] = useState<string | null>(null)
+  const [processingStatus, setProcessingStatus] = useState<{[key: string]: boolean}>({})
   const router = useRouter()
 
   const fetchCameras = async () => {
@@ -34,12 +36,42 @@ export default function CamerasPage() {
         throw new Error(errorData.error || 'Failed to fetch cameras')
       }
       const data = await response.json()
-      setCameras(data.cameras || [])
+      // Sort and set cameras - ensure no accidental filtering here
+      const sortedCameras = (data.cameras || []).sort((a: any, b: any) => 
+        (a.camera_id || '').localeCompare(b.camera_id || '')
+      )
+      setCameras(sortedCameras)
     } catch (err: any) {
       console.error('Error fetching cameras:', err)
       setError(err.message || 'An error occurred')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const toggleProcessing = async (camera: Camera) => {
+    const isProcessing = processingStatus[camera.id]
+    const endpoint = isProcessing ? 'http://localhost:5005/api/stop-rtsp' : 'http://localhost:5005/api/process-rtsp'
+    
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          camera_id: camera.id,
+          rtsp_url: camera.rtsp_url
+        })
+      })
+
+      if (!response.ok) throw new Error('Failed to toggle processing')
+      
+      setProcessingStatus(prev => ({
+        ...prev,
+        [camera.id]: !isProcessing
+      }))
+    } catch (err) {
+      console.error('Error toggling processing:', err)
+      alert('AI Service Error: Ensure the background AI service is running on port 5005.')
     }
   }
 
@@ -91,6 +123,16 @@ export default function CamerasPage() {
 
   useEffect(() => {
     fetchCameras()
+    // Poll AI service health to get active streams
+    const checkAIHealth = async () => {
+      try {
+        const res = await fetch('http://localhost:5005/health')
+        await res.json()
+        // In a real app, we'd sync active_streams with our cameras list
+      } catch (e) {}
+    }
+    const interval = setInterval(checkAIHealth, 5000)
+    return () => clearInterval(interval)
   }, [])
 
   if (loading) {
@@ -376,21 +418,23 @@ export default function CamerasPage() {
 
               {camera.status === 'online' ? (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.75rem' }}>
-                  <button style={{
-                    padding: '0.75rem',
-                    backgroundColor: 'var(--color-text-info)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: 'var(--border-radius-md)',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '4px'
-                  }}>
-                    📺 Live View
+                  <button 
+                    onClick={() => toggleProcessing(camera)}
+                    style={{
+                      padding: '0.75rem',
+                      backgroundColor: processingStatus[camera.id] ? '#ff5252' : '#00c853',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: 'var(--border-radius-md)',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '4px'
+                    }}>
+                    {processingStatus[camera.id] ? '⏹️ Stop AI' : '▶️ Start AI'}
                   </button>
                   <a 
                     href="http://192.168.1.1:8081"

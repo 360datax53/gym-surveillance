@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 
 interface Detection {
   x: number
@@ -31,137 +31,159 @@ export default function CameraFeed({ camera, organizationId }: CameraFeedProps) 
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [detections, setDetections] = useState<Detection[]>([])
   const [matchedMember, setMatchedMember] = useState<MatchedMember | null>(null)
-  const [isUnknown, setIsUnknown] = useState(false)
+  const [streamActive, setStreamActive] = useState(false)
+  const frameImageRef = useRef<HTMLImageElement | null>(null)
 
-  const triggerAlert = async (detection: Detection, currentMatchedMember: MatchedMember | null) => {
-    try {
-      await fetch('/api/detections/auto-alert', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          organization_id: organizationId,
-          camera_id: camera.id,
-          person_name: currentMatchedMember?.name || 'Unknown',
-          member_id: null,
-          is_member: !!currentMatchedMember,
-          alert_type: currentMatchedMember ? 'member_detected' : 'unknown_person',
-          confidence: detection.confidence,
-          location: (camera as any).location || 'Gym Zone'
-        })
-      })
-    } catch (error) {
-      console.error('Alert trigger error:', error)
-    }
-  }
-
+  // Poll individual JPEG snapshots instead of persistent MJPEG streams
+  // This avoids Chrome's 6-connection-per-domain limit entirely
   useEffect(() => {
-    if (!canvasRef.current || camera.status !== 'online') return
+    if (camera.status !== 'online') return
 
-    const interval = setInterval(async () => {
+    let cancelled = false
+    let timeoutId: NodeJS.Timeout
+
+    const fetchSnapshot = async () => {
+      if (cancelled) return
+
       try {
-        const fakeDetection = {
-          x: 180,
-          y: 120,
-          width: 140,
-          height: 180,
-          confidence: 0.85 + Math.random() * 0.1
-        }
+        const res = await fetch(`http://localhost:5005/api/snapshot/${camera.id}`, {
+          cache: 'no-store'
+        })
 
-        setDetections([fakeDetection])
+        if (res.ok && res.status === 200) {
+          const blob = await res.blob()
+          const url = URL.createObjectURL(blob)
 
-        let matched: MatchedMember | null = null
-        let unknown = false
-
-        if (Math.random() > 0.2) {
-          matched = {
-            name: 'John Doe',
-            membership_status: 'active',
-            confidence: 0.90 + Math.random() * 0.08
+          // Create or reuse image element
+          if (!frameImageRef.current) {
+            frameImageRef.current = new Image()
           }
-          unknown = false
-        } else {
-          matched = null
-          unknown = true
+          
+          const img = frameImageRef.current
+          const oldUrl = img.src
+
+          img.onload = () => {
+            setStreamActive(true)
+            // Revoke old URL to free memory
+            if (oldUrl && oldUrl.startsWith('blob:')) {
+              URL.revokeObjectURL(oldUrl)
+            }
+          }
+          img.src = url
         }
-
-        setMatchedMember(matched)
-        setIsUnknown(unknown)
-
-        // Trigger the automatic alert system
-        triggerAlert(fakeDetection, matched)
-
-      } catch (error) {
-        console.error('Detection cycle error:', error)
+      } catch (e) {
+        // Silent - AI service might not be ready yet
       }
-    }, 4000)
 
+      // Schedule next frame (5 FPS = 200ms between frames)
+      if (!cancelled) {
+        timeoutId = setTimeout(fetchSnapshot, 200)
+      }
+    }
+
+    // Stagger start times so not all cameras fetch simultaneously
+    const staggerDelay = (camera.id.charCodeAt(0) % 14) * 50
+    timeoutId = setTimeout(fetchSnapshot, staggerDelay)
+
+    return () => {
+      cancelled = true
+      clearTimeout(timeoutId)
+      // Cleanup blob URLs
+      if (frameImageRef.current?.src?.startsWith('blob:')) {
+        URL.revokeObjectURL(frameImageRef.current.src)
+      }
+    }
+  }, [camera.id, camera.status])
+
+  // Poll for AI detections
+  useEffect(() => {
+    if (!streamActive) return
+
+    const pollDetections = async () => {
+      try {
+        const res = await fetch(`http://localhost:5005/api/detections/${camera.id}`)
+        if (res.ok) {
+          const data = await res.json()
+          setDetections(data.detections || [])
+
+          if (data.detections && data.detections.length > 0) {
+            const topDet = data.detections[0]
+            if (topDet.confidence > 0.8) {
+              setMatchedMember({
+                name: "Member Detected",
+                confidence: Math.round(topDet.confidence * 100),
+                membership_status: "Active"
+              })
+            }
+          } else {
+            setMatchedMember(null)
+          }
+        }
+      } catch (e) {
+        // Silent
+      }
+    }
+
+    const interval = setInterval(pollDetections, 1000)
     return () => clearInterval(interval)
-  }, [camera.status, organizationId])
+  }, [camera.id, streamActive])
 
+  // Render canvas
   useEffect(() => {
     const canvas = canvasRef.current
-    if (!canvas) return
+    const ctx = canvas?.getContext('2d')
+    if (!canvas || !ctx) return
 
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
+    let animationId: number
 
-    // Draw CCTV "No Signal" or Black Screen
-    ctx.fillStyle = '#111'
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    const render = () => {
+      const img = frameImageRef.current
 
-    // Add Scanline effect
-    ctx.fillStyle = 'rgba(0, 255, 0, 0.05)'
-    for (let i = 0; i < canvas.height; i += 4) {
-      ctx.fillRect(0, i, canvas.width, 1)
+      // Draw the latest snapshot frame
+      if (img && img.complete && img.naturalWidth > 0 && streamActive) {
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+      } else {
+        // Offline look
+        ctx.fillStyle = '#111'
+        ctx.fillRect(0, 0, canvas.width, canvas.height)
+        ctx.fillStyle = 'rgba(0, 255, 0, 0.02)'
+        for (let i = 0; i < canvas.height; i += 4) {
+          ctx.fillRect(0, i, canvas.width, 1)
+        }
+      }
+
+      // Draw green AI detection boxes
+      detections.forEach((det: any) => {
+        const x = det.x * canvas.width
+        const y = det.y * canvas.height
+        const w = det.width * canvas.width
+        const h = det.height * canvas.height
+
+        ctx.strokeStyle = '#00ff00'
+        ctx.lineWidth = 2
+        ctx.strokeRect(x, y, w, h)
+
+        // Label
+        ctx.fillStyle = 'rgba(0, 255, 0, 0.7)'
+        ctx.fillRect(x, y - 20, Math.min(100, w), 20)
+        ctx.fillStyle = 'black'
+        ctx.font = 'bold 12px Inter, sans-serif'
+        ctx.fillText(`${Math.round(det.confidence * 100)}%`, x + 5, y - 5)
+      })
+
+      // Member match overlay
+      if (matchedMember) {
+        ctx.fillStyle = '#00e676'
+        ctx.font = 'bold 18px monospace'
+        ctx.fillText(`✓ MEMBER: ${matchedMember.name.toUpperCase()}`, 30, 50)
+      }
+
+      animationId = requestAnimationFrame(render)
     }
 
-    // Grid System
-    ctx.strokeStyle = 'rgba(0, 255, 100, 0.1)'
-    ctx.lineWidth = 1
-    for (let i = 0; i < canvas.width; i += 50) {
-      ctx.beginPath()
-      ctx.moveTo(i, 0)
-      ctx.lineTo(i, canvas.height)
-      ctx.stroke()
-    }
-
-    detections.forEach((detection) => {
-      const color = isUnknown ? '#ff3d00' : '#00e676'
-      
-      // Bounding Box Corners (Premium Look)
-      ctx.strokeStyle = color
-      ctx.lineWidth = 2
-      const { x, y, width: w, height: h } = detection
-      
-      // Top Left
-      ctx.beginPath(); ctx.moveTo(x, y + 20); ctx.lineTo(x, y); ctx.lineTo(x + 20, y); ctx.stroke()
-      // Top Right
-      ctx.beginPath(); ctx.moveTo(x + w - 20, y); ctx.lineTo(x + w, y); ctx.lineTo(x + w, y + 20); ctx.stroke()
-      // Bottom Left
-      ctx.beginPath(); ctx.moveTo(x, y + h - 20); ctx.lineTo(x, y + h); ctx.lineTo(x + 20, y + h); ctx.stroke()
-      // Bottom Right
-      ctx.beginPath(); ctx.moveTo(x + w - 20, y + h); ctx.lineTo(x + w, y + h); ctx.lineTo(x + w, y + h - 20); ctx.stroke()
-
-      // Fill subtle glow
-      ctx.fillStyle = color === '#ff3d00' ? 'rgba(255, 61, 0, 0.1)' : 'rgba(0, 230, 118, 0.1)'
-      ctx.fillRect(x, y, w, h)
-
-      // Confidence Label
-      ctx.fillStyle = color
-      ctx.font = 'bold 12px monospace'
-      ctx.fillText(`${(detection.confidence * 100).toFixed(1)}% CONFIDENCE`, x, y - 8)
-    })
-
-    if (matchedMember) {
-      ctx.fillStyle = '#00e676'
-      ctx.font = 'bold 18px monospace'
-      ctx.fillText(`✓ MEMBER: ${matchedMember.name.toUpperCase()}`, 30, 50)
-    } else if (isUnknown) {
-      ctx.fillStyle = '#ff3d00'
-      ctx.font = 'bold 18px monospace'
-      ctx.fillText('⚠ UNAUTHORIZED / UNKNOWN', 30, 50)
-    }
-  }, [detections, matchedMember, isUnknown])
+    render()
+    return () => cancelAnimationFrame(animationId)
+  }, [detections, matchedMember, streamActive])
 
   return (
     <div style={{ width: '100%', fontFamily: 'var(--font-mono, monospace)' }}>
@@ -172,72 +194,19 @@ export default function CameraFeed({ camera, organizationId }: CameraFeedProps) 
           height={480}
           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
         />
-        
-        {/* Overlays */}
+
         <div style={{ position: 'absolute', top: '20px', right: '20px', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }}>
-          <div style={{ background: isUnknown ? '#ff3d00' : matchedMember ? '#00c853' : '#1e88e5', color: '#fff', padding: '6px 12px', borderRadius: '4px', fontSize: '11px', fontWeight: 900, letterSpacing: '0.1em' }}>
-            {isUnknown ? '⚠️ ALERT' : matchedMember ? '✓ VERIFIED' : 'ANALYZING...'}
+          <div style={{ background: matchedMember ? '#00c853' : streamActive ? '#1e88e5' : '#555', color: '#fff', padding: '6px 12px', borderRadius: '4px', fontSize: '11px', fontWeight: 900, letterSpacing: '0.1em' }}>
+            {matchedMember ? '✓ VERIFIED' : streamActive ? 'ANALYZING...' : 'CONNECTING...'}
           </div>
           <div style={{ background: 'rgba(0,0,0,0.8)', border: '1px solid #333', color: '#00e676', padding: '4px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 600 }}>
             {detections.length} FACES DETECTED
           </div>
         </div>
 
-        <div style={{ position: 'absolute', bottom: '20px', left: '20px', color: 'rgba(255,255,255,0.5)', fontSize: '10px' }}>
-          LIVE // {camera.camera_id} // {new Date().toLocaleTimeString()}
+        <div style={{ position: 'absolute', bottom: '20px', left: '20px', color: 'rgba(255,255,255,0.7)', fontSize: '10px', textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}>
+          LIVE // {camera.name} // {new Date().toLocaleTimeString()}
         </div>
-
-        {/* Identity HUD Overlay (Bottom) */}
-        {matchedMember && (
-          <div style={{ 
-            position: 'absolute',
-            bottom: '0',
-            left: '0',
-            right: '0',
-            padding: '1.25rem', 
-            background: 'linear-gradient(to top, rgba(0, 200, 83, 0.4), rgba(0, 200, 83, 0.1))',
-            backdropFilter: 'blur(8px)',
-            borderTop: '1px solid rgba(0, 200, 83, 0.3)', 
-            color: '#00e676',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
-          }}>
-            <div>
-              <div style={{ fontSize: '10px', fontWeight: 900, letterSpacing: '0.2em', marginBottom: '4px' }}>IDENTITY VERIFIED</div>
-              <div style={{ fontSize: '16px', fontWeight: 800, color: '#fff' }}>{matchedMember.name}</div>
-              <div style={{ fontSize: '10px', opacity: 0.8, marginTop: '2px' }}>STATUS: {matchedMember.membership_status.toUpperCase()}</div>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '24px', fontWeight: 900 }}>{(matchedMember.confidence * 100).toFixed(0)}%</div>
-              <div style={{ fontSize: '8px', fontWeight: 700, opacity: 0.7 }}>MATCH</div>
-            </div>
-          </div>
-        )}
-
-        {isUnknown && detections.length > 0 && (
-          <div style={{ 
-            position: 'absolute',
-            bottom: '0',
-            left: '0',
-            right: '0',
-            padding: '1.25rem', 
-            background: 'linear-gradient(to top, rgba(255, 61, 0, 0.4), rgba(255, 61, 0, 0.1))',
-            backdropFilter: 'blur(8px)',
-            borderTop: '1px solid rgba(255, 61, 0, 0.3)', 
-            color: '#ff3d00'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <div style={{ fontSize: '10px', fontWeight: 900, letterSpacing: '0.2em', marginBottom: '4px' }}>UNAUTHORIZED ENTRY</div>
-                <div style={{ fontSize: '16px', fontWeight: 800, color: '#fff' }}>UNKNOWN DETECTION</div>
-              </div>
-              <div style={{ fontSize: '10px', fontWeight: 700, padding: '4px 8px', background: 'rgba(255, 61, 0, 0.3)', borderRadius: '2px', border: '1px solid rgba(255, 61, 0, 0.5)' }}>
-                PROTOCOL: ALERT SENT
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   )
