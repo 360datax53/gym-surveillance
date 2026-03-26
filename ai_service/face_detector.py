@@ -28,7 +28,7 @@ class FaceDetector:
         
         # Lower threshold = catches more detections (better for overhead cameras)
         self.confidence_threshold = 0.30
-        self.encoding_model = "Facenet512"
+        self.encoding_model = "Facenet"
         
     def detect_faces(self, image_source):
         """

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { createClient } from '@/lib/supabase'
 
 interface Member {
   id: string
@@ -71,6 +72,50 @@ export default function MembersPage() {
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
   const endIndex = startIndex + ITEMS_PER_PAGE
   const paginatedMembers = filteredMembers.slice(startIndex, endIndex)
+
+  const handleUploadFace = async (memberId: string) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = async (e: any) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const base64 = event.target?.result as string;
+        try {
+          alert('Extracting face... this uses the AI service and may take a few seconds.');
+          
+          const supabase = createClient();
+          const { data: { session } } = await supabase.auth.getSession();
+
+          const res = await fetch('/api/members/extract-face', {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              ...(session && { 'Authorization': `Bearer ${session.access_token}` })
+            },
+            body: JSON.stringify({ image_base64: base64, member_id: memberId })
+          });
+          if (!res.ok) {
+            let errMsg = `Server error (${res.status})`;
+            try {
+              const err = await res.json();
+              errMsg = err.error || errMsg;
+            } catch (e) { /* non-JSON response */ }
+            throw new Error(errMsg);
+          }
+          alert('Face successfully registered and mathematical map saved!');
+          window.location.reload();
+        } catch (error: any) {
+          alert('Error: ' + error.message);
+        }
+      };
+      reader.readAsDataURL(file);
+    };
+    input.click();
+  };
 
   if (loading) {
     return (
@@ -239,6 +284,7 @@ export default function MembersPage() {
                   <th style={thStyle}>Card ID</th>
                   <th style={thStyle}>Status</th>
                   <th style={thStyle}>Expires</th>
+                  <th style={thStyle}>Face ID</th>
                 </tr>
               </thead>
               <tbody>
@@ -296,6 +342,25 @@ export default function MembersPage() {
                     </td>
                     <td style={tdStyle}>
                       {member.membership_end ? new Date(member.membership_end).toLocaleDateString() : '-'}
+                    </td>
+                    <td style={tdStyle}>
+                      <button 
+                        onClick={() => handleUploadFace(member.id)}
+                        style={{
+                          padding: '0.4rem 0.8rem',
+                          backgroundColor: 'var(--color-background-primary)',
+                          border: '1px solid var(--color-border-tertiary)',
+                          borderRadius: 'var(--border-radius-md)',
+                          fontSize: '12px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                          color: 'var(--color-text-info)'
+                        }}
+                      >
+                        📷 Upload
+                      </button>
                     </td>
                   </tr>
                 ))}

@@ -107,13 +107,16 @@ export default function CameraFeed({ camera, organizationId }: CameraFeedProps) 
           setDetections(data.detections || [])
 
           if (data.detections && data.detections.length > 0) {
-            const topDet = data.detections[0]
-            if (topDet.confidence > 0.8) {
+            // Check if any detection contains a legitimate face match
+            const matchedDet = data.detections.find((d: any) => d.matched_name)
+            if (matchedDet) {
               setMatchedMember({
-                name: "Member Detected",
-                confidence: Math.round(topDet.confidence * 100),
-                membership_status: "Active"
+                name: matchedDet.matched_name,
+                confidence: Math.round(matchedDet.match_confidence * 100),
+                membership_status: "Verified Match"
               })
+            } else {
+              setMatchedMember(null)
             }
           } else {
             setMatchedMember(null)

@@ -1,0 +1,65 @@
+✓ DeepFace loaded — member recognition enabled
+WARNING ⚠️ /Users/omaresreb/gym-surveillance/ai_service/yolov8n-face.pt appears to require 'omegaconf', which is not in Ultralytics requirements.
+AutoInstall will run now for 'omegaconf' but this feature will be removed in the future.
+Recommend fixes are to train a new model using the latest 'ultralytics' package or to run a command with an official Ultralytics model, i.e. 'yolo predict model=yolo26n.pt'
+[31m[1mrequirements:[0m Ultralytics requirement ['omegaconf'] not found, attempting AutoUpdate...
+Requirement already satisfied: omegaconf in /Library/Frameworks/Python.framework/Versions/3.10/lib/python3.10/site-packages (2.3.0)
+Requirement already satisfied: antlr4-python3-runtime==4.9.* in /Library/Frameworks/Python.framework/Versions/3.10/lib/python3.10/site-packages (from omegaconf) (4.9.3)
+Requirement already satisfied: PyYAML>=5.1.0 in /Library/Frameworks/Python.framework/Versions/3.10/lib/python3.10/site-packages (from omegaconf) (6.0.3)
+
+[31m[1mrequirements:[0m AutoUpdate success ✅ 3.2s
+WARNING ⚠️ [31m[1mrequirements:[0m [1mRestart runtime or rerun command for updates to take effect[0m
+
+Traceback (most recent call last):
+  File "/Users/omaresreb/gym-surveillance/ai_service/venv/lib/python3.11/site-packages/ultralytics/nn/tasks.py", line 1463, in torch_safe_load
+    ckpt = torch_load(file, map_location="cpu")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/omaresreb/gym-surveillance/ai_service/venv/lib/python3.11/site-packages/ultralytics/utils/patches.py", line 178, in torch_load
+    return torch.load(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/omaresreb/gym-surveillance/ai_service/venv/lib/python3.11/site-packages/torch/serialization.py", line 1579, in load
+    return _load(
+           ^^^^^^
+  File "/Users/omaresreb/gym-surveillance/ai_service/venv/lib/python3.11/site-packages/torch/serialization.py", line 2190, in _load
+    result = unpickler.load()
+             ^^^^^^^^^^^^^^^^
+  File "/Users/omaresreb/gym-surveillance/ai_service/venv/lib/python3.11/site-packages/torch/serialization.py", line 2179, in find_class
+    return super().find_class(mod_name, name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'omegaconf'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/omaresreb/gym-surveillance/ai_service/app.py", line 17, in <module>
+    detector = FaceDetector()
+               ^^^^^^^^^^^^^^
+  File "/Users/omaresreb/gym-surveillance/ai_service/face_detector.py", line 23, in __init__
+    self.face_model = YOLO(model_path)
+                      ^^^^^^^^^^^^^^^^
+  File "/Users/omaresreb/gym-surveillance/ai_service/venv/lib/python3.11/site-packages/ultralytics/models/yolo/model.py", line 76, in __init__
+    super().__init__(model=model, task=task, verbose=verbose)
+  File "/Users/omaresreb/gym-surveillance/ai_service/venv/lib/python3.11/site-packages/ultralytics/engine/model.py", line 144, in __init__
+    self._load(model, task=task)
+  File "/Users/omaresreb/gym-surveillance/ai_service/venv/lib/python3.11/site-packages/ultralytics/engine/model.py", line 283, in _load
+    self.model, self.ckpt = load_checkpoint(weights)
+                            ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/omaresreb/gym-surveillance/ai_service/venv/lib/python3.11/site-packages/ultralytics/nn/tasks.py", line 1515, in load_checkpoint
+    ckpt, weight = torch_safe_load(weight)  # load ckpt
+                   ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/omaresreb/gym-surveillance/ai_service/venv/lib/python3.11/site-packages/ultralytics/nn/tasks.py", line 1489, in torch_safe_load
+    ckpt = torch_load(file, map_location="cpu")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/omaresreb/gym-surveillance/ai_service/venv/lib/python3.11/site-packages/ultralytics/utils/patches.py", line 178, in torch_load
+    return torch.load(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/omaresreb/gym-surveillance/ai_service/venv/lib/python3.11/site-packages/torch/serialization.py", line 1579, in load
+    return _load(
+           ^^^^^^
+  File "/Users/omaresreb/gym-surveillance/ai_service/venv/lib/python3.11/site-packages/torch/serialization.py", line 2190, in _load
+    result = unpickler.load()
+             ^^^^^^^^^^^^^^^^
+  File "/Users/omaresreb/gym-surveillance/ai_service/venv/lib/python3.11/site-packages/torch/serialization.py", line 2179, in find_class
+    return super().find_class(mod_name, name)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ModuleNotFoundError: No module named 'omegaconf'

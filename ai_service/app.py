@@ -77,45 +77,77 @@ class RTSPStreamProcessor:
 
     def _process_loop(self):
         frame_count = 0
+        last_member_fetch = 0
+        known_members = []
+        import time
+        from datetime import datetime, timezone
+
         while self.is_running:
             try:
+                # Refresh known members every 60 seconds
+                current_time = time.time()
+                if current_time - last_member_fetch > 60:
+                    try:
+                        res = supabase.table('members').select('id, name, face_encoding').not_.is_('face_encoding', 'null').execute()
+                        if res.data:
+                            import json
+                            known_members = []
+                            for m in res.data:
+                                try:
+                                    enc = json.loads(m['face_encoding'])
+                                    known_members.append({
+                                        'member_id': m['id'],
+                                        'name': m['name'],
+                                        'encoding': enc
+                                    })
+                                except Exception:
+                                    pass
+                        last_member_fetch = current_time
+                    except Exception as e:
+                        print(f"Error fetching members: {e}")
+
                 if not self.cap or not self.cap.isOpened():
-                    import time
                     time.sleep(1)
                     continue
 
                 ret, frame = self.cap.read()
                 if not ret:
-                    # Silent reconnect logic
                     self.cap.release()
                     self.cap = cv2.VideoCapture(self.rtsp_url, cv2.CAP_FFMPEG)
-                    import time
                     time.sleep(1)
                     continue
                 
-                # Store the latest frame for the streaming endpoint
                 self.latest_frame = frame
                 
-                # Process every 20th frame for AI
                 if frame_count % 20 == 0:
                     results = detector.detect_faces(frame)
                     if results['success']:
-                        # Always update — clears boxes when person moves away
-                        self.latest_detections = results['detections'] if results['face_count'] > 0 else []
+                        dets = results['detections']
+                        
+                        # Process face recognition
+                        for det in dets:
+                            if det.get('type') == 'face' and known_members:
+                                enc_res = detector.extract_face_encoding(frame, det)
+                                if enc_res.get('success'):
+                                    match = detector.match_member(enc_res['encoding'], known_members, threshold=0.45)
+                                    if match:
+                                        det['matched_name'] = match['name']
+                                        det['match_confidence'] = match['confidence']
+
+                        self.latest_detections = dets if results['face_count'] > 0 else []
                         if results['face_count'] > 0:
-                            self._handle_detections(results['detections'], frame)
+                            self._handle_detections(dets, frame)
                 
                 frame_count += 1
             except Exception as e:
                 print(f"Error in process loop: {e}")
-                import time
                 time.sleep(1)
 
     def _handle_detections(self, detections, frame):
         try:
             db_entries = []
             for det in detections:
-                db_entries.append({
+                entry = {
                     'camera_id': self.camera_id,
                     'confidence': det['confidence'],
                     'x': det['x'],
@@ -123,7 +155,14 @@ class RTSPStreamProcessor:
                     'width': det['width'],
                     'height': det['height'],
                     'created_at': datetime.now(timezone.utc).isoformat()
-                })
+                }
+                if 'matched_name' in det:
+                    # Append the matched name to the detection payload (requires the column to exist, 
+                    # but we'll try to insert it or rely on the frontend reading it directly from latest_detections)
+                    # We will NOT insert it to the DB if the column doesn't exist, to avoid crashes.
+                    # We keep it in self.latest_detections (in memory) for the frontend to pick up.
+                    pass
+                db_entries.append(entry)
             
             # Store detections for the polling endpoint (OUTSIDE the loop)
             self.latest_detections = db_entries
@@ -148,6 +187,58 @@ def detect_face():
         result = detector.detect_faces(image_source)
         return jsonify(result)
     except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/api/encode-face', methods=['POST'])
+def encode_face_endpoint():
+    try:
+        data = request.json if request.is_json else None
+        
+        if data and 'image' in data:
+            # Handle base64 from Next.js API
+            image_source = data.get('image')
+            import base64, io
+            from PIL import Image
+            import numpy as np
+            base64_data = image_source.split(',')[1] if ',' in image_source else image_source
+            image_data = base64.b64decode(base64_data)
+            
+            import tempfile
+            import os
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as temp_file:
+                temp_file.write(image_data)
+                temp_path = temp_file.name
+        elif 'image' in request.files:
+            file = request.files['image']
+            img_bytes = file.read()
+            import tempfile
+            import os
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as temp_file:
+                temp_file.write(img_bytes)
+                temp_path = temp_file.name
+        else:
+            return jsonify({'error': 'No image provided'}), 400
+            
+        try:
+            from deepface import DeepFace
+            # Using Facenet because it's locally cached and avoids download quota limit crashes
+            results = DeepFace.represent(img_path=temp_path, model_name="Facenet", enforce_detection=False, align=True)
+            
+            if not results:
+                return jsonify({'error': 'No face embedding could be generated'}), 400
+                
+            embedding = results[0]['embedding']
+            return jsonify({
+                'success': True,
+                'encoding': embedding
+            })
+        finally:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+                
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/process-rtsp', methods=['POST'])
