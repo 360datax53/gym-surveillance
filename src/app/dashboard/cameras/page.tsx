@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import CameraFeed from '@/components/CameraFeed'
+import { useAiHost } from '@/hooks/useAiHost'
 
 interface Camera {
   id: string
@@ -27,6 +28,8 @@ export default function CamerasPage() {
   const [settingsOpenId, setSettingsOpenId] = useState<string | null>(null)
   const [editFormData, setEditFormData] = useState({ name: '', zone: '' })
   const [isSaving, setIsSaving] = useState(false)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const { aiHost } = useAiHost()
   const [processingStatus, setProcessingStatus] = useState<{[key: string]: boolean}>({})
   const router = useRouter()
 
@@ -53,8 +56,6 @@ export default function CamerasPage() {
 
   const toggleProcessing = async (camera: Camera) => {
     const isProcessing = processingStatus[camera.id]
-    const hostname = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
-    const aiHost = (hostname.includes('vercel.app') || hostname === 'localhost') ? 'localhost' : hostname;
     const aiServiceUrl = `http://${aiHost}:5005`;
     const endpoint = isProcessing ? `${aiServiceUrl}/api/stop-rtsp` : `${aiServiceUrl}/api/process-rtsp`
     
@@ -163,8 +164,6 @@ export default function CamerasPage() {
     // Poll AI service health to get active streams
     const checkAIHealth = async () => {
       try {
-        const hostname = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
-        const aiHost = (hostname.includes('vercel.app') || hostname === 'localhost') ? 'localhost' : hostname;
         const res = await fetch(`http://${aiHost}:5005/health`)
         await res.json()
         // In a real app, we'd sync active_streams with our cameras list

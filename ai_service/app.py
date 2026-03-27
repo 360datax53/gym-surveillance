@@ -30,6 +30,30 @@ if not supabase_url or not supabase_key:
 
 supabase: Client = create_client(supabase_url, supabase_key)
 
+def update_ai_host():
+    """Detect local IP and update Supabase for zero-config mobile connectivity."""
+    import socket
+    try:
+        # Create a dummy connection to find the local IP address
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        local_ip = s.getsockname()[0]
+        s.close()
+        
+        print(f"Auto-detected Local IP: {local_ip}", flush=True)
+        # Attempt to update it in Supabase (requires system_configs table)
+        supabase.table('system_configs').upsert({
+            'key': 'ai_service_host',
+            'value': local_ip,
+            'updated_at': datetime.now(timezone.utc).isoformat()
+        }).execute()
+        print("Successfully updated AI host in Supabase.", flush=True)
+    except Exception as e:
+        print(f"Note: Could not auto-update AI host in Supabase (check if system_configs table exists): {e}", flush=True)
+
+# Run auto-discovery on startup
+update_ai_host()
+
 # RTSP credentials - loaded from .env, never from the database
 RTSP_USERNAME = os.environ.get("RTSP_USERNAME", "")
 RTSP_PASSWORD = os.environ.get("RTSP_PASSWORD", "")
