@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import './globals.css'
+import { OrganizationProvider } from '@/context/OrganizationContext'
 
 export const metadata: Metadata = {
   title: '🎥 Gym Surveillance System',
@@ -13,7 +14,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body suppressHydrationWarning>
+        <OrganizationProvider>
+          {children}
+        </OrganizationProvider>
+      </body>
     </html>
   )
 }

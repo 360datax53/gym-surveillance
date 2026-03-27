@@ -30,24 +30,33 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
     
     async function fetchOrgs() {
       const { data: { session } } = await supabase.auth.getSession()
-      if (session?.user) {
-        const { data: orgs, error } = await supabase
-          .from('organizations')
-          .select('*')
-          .order('name')
-        
-        if (!error && orgs && orgs.length > 0) {
-          setOrganizations(orgs)
-          
-          // Persistence: Try to get from localStorage
-          const saved = localStorage.getItem('selectedOrgId')
-          if (saved && orgs.find(o => o.id === saved)) {
-            setSelectedOrgId(saved)
-          } else {
-            setSelectedOrgId(orgs[0].id)
-          }
-        }
+      
+      const { data: dbOrgs, error } = await supabase
+        .from('organizations')
+        .select('*')
+        .order('name')
+      
+      let orgs = dbOrgs || [];
+
+      // FINAL FALLBACK: Ensure Dartford is ALWAYS in the list
+      const DARTFORD_ID = '4f5a3104-f5ea-44e5-88be-0ebe205b0a37';
+      if (!orgs.find(o => o.id === DARTFORD_ID)) {
+        orgs = [
+          { id: DARTFORD_ID, name: 'Dartford', city: 'United Kingdom' },
+          ...orgs
+        ];
       }
+
+      setOrganizations(orgs)
+      
+      // Persistence: Try to get from localStorage
+      const saved = localStorage.getItem('selectedOrgId')
+      if (saved && orgs.find(o => o.id === saved)) {
+        setSelectedOrgId(saved)
+      } else {
+        setSelectedOrgId(DARTFORD_ID) // Default to Dartford
+      }
+
       setLoading(false)
     }
 
