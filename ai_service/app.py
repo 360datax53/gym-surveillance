@@ -31,25 +31,32 @@ if not supabase_url or not supabase_key:
 supabase: Client = create_client(supabase_url, supabase_key)
 
 def update_ai_host():
-    """Detect local IP and update Supabase for zero-config mobile connectivity."""
+    """Detect local IP (or use public tunnel) and update Supabase for zero-config connectivity."""
     import socket
     try:
-        # Create a dummy connection to find the local IP address
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(("8.8.8.8", 80))
-        local_ip = s.getsockname()[0]
-        s.close()
+        # 1. Prioritize a manually set public URL (e.g. from Ngrok)
+        public_url = os.environ.get("PUBLIC_AI_URL")
         
-        print(f"Auto-detected Local IP: {local_ip}", flush=True)
-        # Attempt to update it in Supabase (requires system_configs table)
+        if public_url:
+            host_to_save = public_url.replace("http://", "").replace("https://", "").split(":")[0]
+            print(f"Using Public Tunnel Host: {host_to_save}", flush=True)
+        else:
+            # 2. Fallback to auto-detecting the local IP address
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            host_to_save = s.getsockname()[0]
+            s.close()
+            print(f"Auto-detected Local IP: {host_to_save}", flush=True)
+        
+        # Update Supabase (requires system_configs table)
         supabase.table('system_configs').upsert({
             'key': 'ai_service_host',
-            'value': local_ip,
+            'value': host_to_save,
             'updated_at': datetime.now(timezone.utc).isoformat()
         }).execute()
-        print("Successfully updated AI host in Supabase.", flush=True)
+        print(f"Successfully updated AI host ({host_to_save}) in Supabase.", flush=True)
     except Exception as e:
-        print(f"Note: Could not auto-update AI host in Supabase (check if system_configs table exists): {e}", flush=True)
+        print(f"Note: Could not auto-update AI host in Supabase: {e}", flush=True)
 
 # Run auto-discovery on startup
 update_ai_host()
