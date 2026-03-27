@@ -93,9 +93,9 @@ export default function HeatmapPage() {
         const x = (pos.x / 100) * canvas.width
         const y = (pos.y / 100) * canvas.height
         
-        // Intensity scaling
-        const radius = Math.min(400, 150 + stats.peak * 20)
-        const intensity = Math.min(1, stats.peak / 15) // Peak opacity
+        // Intensity scaling - Tuned for better accuracy and less overlap
+        const radius = Math.min(250, 60 + stats.peak * 12)
+        const intensity = Math.min(0.8, stats.peak / 25) // Peak opacity
         
         const grad = ctx.createRadialGradient(x, y, 0, x, y, radius)
         grad.addColorStop(0, `rgba(0,0,0, ${intensity})`)
@@ -521,21 +521,21 @@ export default function HeatmapPage() {
                     <table className="w-full text-left text-sm text-gray-600">
                       <thead className="bg-gray-50/50 text-xs uppercase text-gray-500 border-b border-gray-100">
                         <tr>
-                          <th className="px-6 py-4 font-bold">Hour</th>
-                          <th className="px-6 py-4 font-bold">Busiest Zone</th>
-                          <th className="px-6 py-4 font-bold">Peak Occupancy</th>
-                          <th className="px-6 py-4 font-bold">Status</th>
+                          <th className="px-3 md:px-6 py-4 font-bold">Hour</th>
+                          <th className="px-3 md:px-6 py-4 font-bold">Busiest Zone</th>
+                          <th className="px-3 md:px-6 py-4 font-bold">Peak Occupancy</th>
+                          <th className="px-3 md:px-6 py-4 font-bold">Status</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-100">
                         {hourlyList.map((data: any, i) => (
                           <tr key={i} className="hover:bg-blue-50/30 transition-colors">
-                            <td className="px-6 py-4 font-bold text-gray-900">{data.hour}</td>
-                            <td className="px-6 py-4 font-medium capitalize text-blue-600">
+                            <td className="px-3 md:px-6 py-4 font-bold text-gray-900">{data.hour}</td>
+                            <td className="px-3 md:px-6 py-4 font-medium capitalize text-blue-600">
                               {data.busiestZone ? data.busiestZone.replace(/_/g, ' ') : 'N/A'}
                             </td>
-                            <td className="px-6 py-4 font-bold">{data.peak}</td>
-                            <td className="px-6 py-4">
+                            <td className="px-3 md:px-6 py-4 font-bold">{data.peak}</td>
+                            <td className="px-3 md:px-6 py-4">
                               <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
                                 data.peak > 20 ? 'bg-red-100 text-red-700' :
                                 data.peak > 10 ? 'bg-amber-100 text-amber-700' :
