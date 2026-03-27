@@ -93,12 +93,16 @@ export default function HeatmapPage() {
         const x = (pos.x / 100) * canvas.width
         const y = (pos.y / 100) * canvas.height
         
-        // Intensity scaling - Tuned for better accuracy and less overlap
-        const radius = Math.min(250, 60 + stats.peak * 12)
-        const intensity = Math.min(0.8, stats.peak / 25) // Peak opacity
+        // Intensity scaling - Unified for Desktop and Mobile (Relative Radius)
+        const baseRadius = canvas.width * 0.08 // 8% of width is ideal
+        const statsScale = 1 + (stats.peak / 10) // More stats = bigger area
+        const radius = Math.min(canvas.width * 0.2, baseRadius * statsScale)
+        
+        const intensity = Math.min(0.7, stats.peak / 30) // Peak opacity
         
         const grad = ctx.createRadialGradient(x, y, 0, x, y, radius)
         grad.addColorStop(0, `rgba(0,0,0, ${intensity})`)
+        grad.addColorStop(0.5, `rgba(0,0,0, ${intensity * 0.4})`)
         grad.addColorStop(1, 'rgba(0,0,0,0)')
         
         ctx.fillStyle = grad
@@ -276,17 +280,17 @@ export default function HeatmapPage() {
   const hourlyList = hourlyData ? Object.values(hourlyData).sort((a: any, b: any) => a.hourNum - b.hourNum) : []
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8">
+    <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6 md:space-y-8">
       {/* Header Actions */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+        <div className="flex-1">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-3">
             <span role="img" aria-label="heatmap">🗺️</span> Floor Plan Heatmap
           </h1>
-          <p className="text-gray-500 mt-2">Live spatial occupancy overlay on the gym floor plan.</p>
+          <p className="text-sm md:text-base text-gray-500 mt-2">Live spatial occupancy overlay on the gym floor plan.</p>
         </div>
         
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-3 md:gap-4 w-full md:w-auto">
           <button
             onClick={() => setIsEditMode(!isEditMode)}
             className={`px-4 py-2 rounded-md text-sm font-bold transition-colors shadow-sm border ${
@@ -298,13 +302,13 @@ export default function HeatmapPage() {
             {isEditMode ? 'Done Editing' : '✏️ Map Cameras'}
           </button>
           
-          <div className="flex items-center gap-4 bg-white p-2 rounded-lg border border-gray-200 shadow-sm">
-            <label className="text-sm font-medium text-gray-600">Date:</label>
+          <div className="flex items-center gap-2 md:gap-4 bg-white p-2 md:px-3 rounded-lg border border-gray-200 shadow-sm flex-1 md:flex-none justify-between md:justify-start">
+            <label className="text-xs md:text-sm font-medium text-gray-600 whitespace-nowrap">Date:</label>
             <input
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="p-2 border border-gray-200 rounded-md text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              className="p-1.5 md:p-2 border border-gray-200 rounded-md text-xs md:text-sm focus:ring-2 focus:ring-blue-500 outline-none w-full md:w-auto"
             />
           </div>
         </div>

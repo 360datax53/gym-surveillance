@@ -266,9 +266,14 @@ class RTSPStreamProcessor:
 
     def _upsert_heatmap_data(self, bucket_str, count):
         if not self.organization_id:
+            print(f"DEBUG: Skipping heatmap update for {self.camera_id} - missing organization_id", flush=True)
+            return
+        if not self.zone:
+            print(f"DEBUG: Skipping heatmap update for {self.camera_id} - missing zone", flush=True)
             return
             
         try:
+            print(f"DEBUG: Syncing heatmap for {self.camera_id} (Zone: {self.zone}, Count: {count}, Bucket: {bucket_str})", flush=True)
             # Check if bucket exists for this zone and org
             res = supabase.table('heatmap_data').select('id, person_count').eq('organization_id', self.organization_id).eq('zone', self.zone).eq('time_bucket', bucket_str).execute()
             
@@ -277,9 +282,13 @@ class RTSPStreamProcessor:
                 existing_count = res.data[0]['person_count'] or 0
                 # Only update if the new count is a new peak for this bucket
                 if count > existing_count:
+                    print(f"DEBUG: Updating existing bucket {existing_id} with new peak: {count}", flush=True)
                     supabase.table('heatmap_data').update({'person_count': count}).eq('id', existing_id).execute()
+                else:
+                    print(f"DEBUG: Current count {count} is not higher than peak {existing_count}. Skipping update.", flush=True)
             else:
                 # Create new bucket entry
+                print(f"DEBUG: Creating new heatmap entry for {bucket_str} with count {count}", flush=True)
                 supabase.table('heatmap_data').insert({
                     'organization_id': self.organization_id,
                     'zone': self.zone,
