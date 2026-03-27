@@ -662,12 +662,20 @@ export default function HeatmapPage() {
                   </div>
                   {Object.keys(positions).length > 0 && (
                     <button 
-                      onClick={() => {
+                      onClick={async () => {
                         if(window.confirm('Clear all camera placements? This will remove them from the persistent database.')) {
-                          // This would ideally be a batch API call, but for simplicity we can just encourage moving them.
-                          // For now, we'll just clear the local state to show they are gone, 
-                          // but the user should really just re-place them.
-                          alert('Please re-place the cameras to update their positions in the database.');
+                          try {
+                            const res = await fetch('/api/cameras/reset-positions', { method: 'POST' });
+                            if (res.ok) {
+                              setPositions({});
+                              setPlacingCameraId(null);
+                            } else {
+                              throw new Error('Failed to reset positions');
+                            }
+                          } catch (err) {
+                            console.error('Reset failed:', err);
+                            alert('Failed to reset camera positions.');
+                          }
                         }
                       }}
                       className="mt-4 w-full py-2 text-xs font-bold text-red-500 bg-red-50 rounded-md hover:bg-red-100"
