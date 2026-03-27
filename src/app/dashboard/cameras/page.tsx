@@ -53,10 +53,9 @@ export default function CamerasPage() {
 
   const toggleProcessing = async (camera: Camera) => {
     const isProcessing = processingStatus[camera.id]
-    const hostname = typeof window !== 'undefined' 
-      ? (localStorage.getItem('ai_service_host') || window.location.hostname) 
-      : 'localhost';
-    const aiServiceUrl = `http://${hostname}:5005`;
+    const hostname = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+    const aiHost = (hostname.includes('vercel.app') || hostname === 'localhost') ? 'localhost' : hostname;
+    const aiServiceUrl = `http://${aiHost}:5005`;
     const endpoint = isProcessing ? `${aiServiceUrl}/api/stop-rtsp` : `${aiServiceUrl}/api/process-rtsp`
     
     try {
@@ -164,10 +163,9 @@ export default function CamerasPage() {
     // Poll AI service health to get active streams
     const checkAIHealth = async () => {
       try {
-        const hostname = typeof window !== 'undefined' 
-          ? (localStorage.getItem('ai_service_host') || window.location.hostname) 
-          : 'localhost';
-        const res = await fetch(`http://${hostname}:5005/health`)
+        const hostname = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+        const aiHost = (hostname.includes('vercel.app') || hostname === 'localhost') ? 'localhost' : hostname;
+        const res = await fetch(`http://${aiHost}:5005/health`)
         await res.json()
         // In a real app, we'd sync active_streams with our cameras list
       } catch (e) {}

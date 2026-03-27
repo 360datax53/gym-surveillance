@@ -46,10 +46,14 @@ export default function CameraFeed({ camera, organizationId }: CameraFeedProps) 
       if (cancelled) return
 
       try {
-        const hostname = typeof window !== 'undefined' 
-          ? (localStorage.getItem('ai_service_host') || window.location.hostname) 
-          : 'localhost';
-        const aiServiceUrl = `http://${hostname}:5005`;
+        // ALWAYS try localhost first if on desktop, or the current hostname for mobile/network
+        // Hard-coding localhost is the safest way to ensure the desktop always works even via Vercel.
+        const hostname = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+        
+        // If we are on Vercel, we MUST try to talk to the local AI service on the user's machine (localhost)
+        const aiHost = (hostname.includes('vercel.app') || hostname === 'localhost') ? 'localhost' : hostname;
+        const aiServiceUrl = `http://${aiHost}:5005`;
+        
         const res = await fetch(`${aiServiceUrl}/api/snapshot/${camera.id}`, {
           cache: 'no-store'
         })
@@ -105,10 +109,9 @@ export default function CameraFeed({ camera, organizationId }: CameraFeedProps) 
 
     const pollDetections = async () => {
       try {
-        const hostname = typeof window !== 'undefined' 
-          ? (localStorage.getItem('ai_service_host') || window.location.hostname) 
-          : 'localhost';
-        const aiServiceUrl = `http://${hostname}:5005`;
+        const hostname = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+        const aiHost = (hostname.includes('vercel.app') || hostname === 'localhost') ? 'localhost' : hostname;
+        const aiServiceUrl = `http://${aiHost}:5005`;
         const res = await fetch(`${aiServiceUrl}/api/detections/${camera.id}`)
         if (res.ok) {
           const data = await res.json()

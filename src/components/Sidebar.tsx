@@ -175,17 +175,6 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
         </nav>
       </div>
 
-      {/* AI Service Connection Status */}
-      <div className="px-4 py-3 bg-black/40 border-t border-white/5">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">AI Service</span>
-          <ConnectionBadge />
-        </div>
-        <p className="text-[9px] text-gray-400 leading-tight">
-          Required for live cameras & heatmap data.
-        </p>
-      </div>
-
       {/* User Profile & Footer */}
       <div className="border-t border-white/5 bg-black/20">
         {/* User Info */}
@@ -222,85 +211,5 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
         </div>
       </div>
     </div>
-  )
-}
-
-function ConnectionBadge() {
-  const [status, setStatus] = useState<'checking' | 'online' | 'offline'>('checking')
-  const [showInput, setShowInput] = useState(false)
-  const [customHost, setCustomHost] = useState('')
-
-  const getAiHost = () => {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('ai_service_host') || window.location.hostname
-    }
-    return 'localhost'
-  }
-
-  const checkHealth = async () => {
-    try {
-      const host = getAiHost()
-      const res = await fetch(`http://${host}:5005/health`)
-      if (res.ok) setStatus('online')
-      else setStatus('offline')
-    } catch (e) {
-      setStatus('offline')
-    }
-  }
-
-  useEffect(() => {
-    checkHealth()
-    const interval = setInterval(checkHealth, 10000)
-    return () => clearInterval(interval)
-  }, [])
-
-  const handleSaveHost = () => {
-    if (customHost) {
-      localStorage.setItem('ai_service_host', customHost)
-      setShowInput(false)
-      checkHealth()
-      window.location.reload() // Reload to apply to all components
-    }
-  }
-
-  if (showInput) {
-    return (
-      <div className="flex gap-1">
-        <input 
-          autoFocus
-          className="bg-gray-800 text-[9px] px-1 py-0.5 rounded border border-gray-600 outline-none w-24"
-          placeholder="Enter Mac IP..."
-          value={customHost}
-          onChange={e => setCustomHost(e.target.value)}
-          onBlur={() => setShowInput(false)}
-          onKeyDown={e => e.key === 'Enter' && handleSaveHost()}
-        />
-      </div>
-    )
-  }
-
-  if (status === 'checking') return <span className="text-[10px] text-gray-500">checking...</span>
-  if (status === 'online') return (
-    <span 
-      className="text-[10px] text-green-400 font-bold flex items-center gap-1 cursor-pointer hover:underline"
-      onClick={() => {
-        setCustomHost(getAiHost())
-        setShowInput(true)
-      }}
-    >
-      <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" /> Online
-    </span>
-  )
-  
-  return (
-    <span 
-      className="text-[10px] text-red-500 font-bold flex items-center gap-1 cursor-pointer hover:underline" 
-      onClick={() => {
-        setCustomHost(getAiHost())
-        setShowInput(true)
-      }}
-    >
-      <ShieldAlert className="h-3 w-3" /> Offline (Fix)
-    </span>
   )
 }
