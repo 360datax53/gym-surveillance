@@ -26,8 +26,9 @@ class FaceDetector:
         # from overhead angles where faces aren't visible
         self.person_model = YOLO('yolov8n.pt')  # Downloads automatically on first run
         
-        # Lower threshold = catches more detections (better for overhead cameras)
-        self.confidence_threshold = 0.30
+        # Higher threshold = fewer false positives (like gym weights)
+        self.confidence_threshold = 0.45
+        self.min_face_size = 20  # Minimum width/height in pixels to consider a face
         self.encoding_model = "Facenet"
         
     def detect_faces(self, image_source):
@@ -59,6 +60,12 @@ class FaceDetector:
                 for box in result.boxes:
                     x1, y1, x2, y2 = box.xyxy[0].tolist()
                     confidence = float(box.conf[0])
+                    w_abs = int(x2 - x1)
+                    h_abs = int(y2 - y1)
+                    
+                    if w_abs < self.min_face_size or h_abs < self.min_face_size:
+                        continue
+                        
                     detections.append({
                         'x': x1 / img_w,
                         'y': y1 / img_h,
@@ -67,7 +74,7 @@ class FaceDetector:
                         'confidence': confidence,
                         'type': 'face',
                         'x_abs': int(x1), 'y_abs': int(y1),
-                        'w_abs': int(x2 - x1), 'h_abs': int(y2 - y1),
+                        'w_abs': w_abs, 'h_abs': h_abs,
                     })
 
             # --- Step 2: If no faces found, fall back to person/body detection ---

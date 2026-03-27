@@ -1,6 +1,8 @@
 import os
 import threading
 import cv2
+import requests
+import json
 from datetime import datetime, timezone
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -8,7 +10,9 @@ from face_detector import FaceDetector
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
-load_dotenv()
+# Load env from current directory (ai_service/)
+env_path = os.path.join(os.path.dirname(__file__), '.env')
+load_dotenv(env_path)
 
 app = Flask(__name__)
 CORS(app)
@@ -19,6 +23,11 @@ detector = FaceDetector()
 # Supabase configuration
 supabase_url = os.environ.get("NEXT_PUBLIC_SUPABASE_URL")
 supabase_key = os.environ.get("NEXT_PUBLIC_SUPABASE_ANON_KEY")
+
+print(f"Supabase URL: {supabase_url}", flush=True)
+if not supabase_url or not supabase_key:
+    print("FATAL ERROR: Supabase credentials missing from .env", flush=True)
+
 supabase: Client = create_client(supabase_url, supabase_key)
 
 # RTSP credentials - loaded from .env, never from the database
@@ -92,7 +101,6 @@ class RTSPStreamProcessor:
         last_member_fetch = 0
         known_members = []
         import time
-        from datetime import datetime, timezone
 
         while self.is_running:
             try:
@@ -101,22 +109,32 @@ class RTSPStreamProcessor:
                 if current_time - last_member_fetch > 60:
                     try:
                         res = supabase.table('members').select('id, name, face_encoding').not_.is_('face_encoding', 'null').execute()
+                        print(f"Fetch results: {len(res.data)} records found in Supabase with encodings.", flush=True)
                         if res.data:
                             import json
                             known_members = []
                             for m in res.data:
                                 try:
-                                    enc = json.loads(m['face_encoding'])
-                                    known_members.append({
-                                        'member_id': m['id'],
-                                        'name': m['name'],
-                                        'encoding': enc
-                                    })
-                                except Exception:
-                                    pass
+                                    raw_enc = m['face_encoding']
+                                    if isinstance(raw_enc, str):
+                                        enc = json.loads(raw_enc)
+                                    else:
+                                        enc = raw_enc
+                                        
+                                    if isinstance(enc, list):
+                                        known_members.append({
+                                            'member_id': m['id'],
+                                            'name': m['name'],
+                                            'encoding': enc
+                                        })
+                                    else:
+                                        print(f"Warning: face_encoding for {m['name']} is not a list: {type(enc)}", flush=True)
+                                except Exception as e:
+                                    print(f"Error parsing face_encoding for {m['name']}: {e}", flush=True)
+                            print(f"Refreshed known members: {len(known_members)} members with encodings loaded.", flush=True)
                         last_member_fetch = current_time
                     except Exception as e:
-                        print(f"Error fetching members: {e}")
+                        print(f"Error fetching members: {e}", flush=True)
 
                 if not self.cap or not self.cap.isOpened():
                     time.sleep(1)
@@ -131,7 +149,7 @@ class RTSPStreamProcessor:
                 
                 self.latest_frame = frame
                 
-                if frame_count % 20 == 0:
+                if frame_count % 10 == 0:
                     results = detector.detect_faces(frame)
                     if results['success']:
                         dets = results['detections']
@@ -139,12 +157,18 @@ class RTSPStreamProcessor:
                         # Process face recognition
                         for det in dets:
                             if det.get('type') == 'face' and known_members:
+                                print(f"Attempting encoding for face in camera {self.camera_id}...", flush=True)
                                 enc_res = detector.extract_face_encoding(frame, det)
                                 if enc_res.get('success'):
-                                    match = detector.match_member(enc_res['encoding'], known_members, threshold=0.45)
+                                    match = detector.match_member(enc_res['encoding'], known_members, threshold=0.50)
                                     if match:
+                                        print(f"MATCH FOUND: {match['name']} in camera {self.camera_id} (conf: {match['confidence']})", flush=True)
                                         det['matched_name'] = match['name']
                                         det['match_confidence'] = match['confidence']
+                                    else:
+                                        print(f"No match found for detected face in camera {self.camera_id} (distance above threshold)", flush=True)
+                                else:
+                                    print(f"Encoding failed for face in camera {self.camera_id}: {enc_res.get('error')}", flush=True)
 
                         self.latest_detections = dets if results['face_count'] > 0 else []
                         if results['face_count'] > 0:
@@ -157,37 +181,41 @@ class RTSPStreamProcessor:
 
     def _handle_detections(self, detections, frame):
         try:
-            db_entries = []
             for det in detections:
-                entry = {
+                # Prepare payload for the Next.js auto-alert API
+                # This handles both DB insertion and real-time broadcasting
+                payload = {
+                    'organization_id': self.organization_id,
                     'camera_id': self.camera_id,
+                    'person_name': det.get('matched_name', 'Unauthorized Subject'),
+                    'member_id': det.get('member_id'),
+                    'is_member': 'matched_name' in det,
+                    'alert_type': 'staff_detected' if 'matched_name' in det else 'unknown_person',
                     'confidence': det['confidence'],
-                    'x': det['x'],
-                    'y': det['y'],
-                    'width': det['width'],
-                    'height': det['height'],
-                    'created_at': datetime.now(timezone.utc).isoformat()
+                    'location': self.zone or 'Gym Floor'
                 }
-                if 'matched_name' in det:
-                    # Append the matched name to the detection payload (requires the column to exist, 
-                    # but we'll try to insert it or rely on the frontend reading it directly from latest_detections)
-                    # We will NOT insert it to the DB if the column doesn't exist, to avoid crashes.
-                    # We keep it in self.latest_detections (in memory) for the frontend to pick up.
-                    pass
-                db_entries.append(entry)
+                
+                try:
+                    # Call the Next.js API
+                    resp = requests.post(
+                        'http://localhost:3000/api/detections/auto-alert',
+                        json=payload,
+                        timeout=2
+                    )
+                    if not resp.ok:
+                        print(f"Auto-alert API error: {resp.status_code} - {resp.text}", flush=True)
+                except Exception as e:
+                    print(f"Failed to call auto-alert API: {e}", flush=True)
             
-            # Store detections for the polling endpoint (OUTSIDE the loop)
-            self.latest_detections = db_entries
+            # Keep in-memory for the polling endpoint
+            self.latest_detections = detections
             
-            if db_entries:
-                supabase.table('detections').insert(db_entries).execute()
         except Exception as e:
-            print(f"Error storing detections for {self.camera_id}: {e}")
+            print(f"Error handling detections for {self.camera_id}: {e}", flush=True)
 
         # Heatmap update logic
         try:
             if self.organization_id and self.zone:
-                from datetime import datetime, timezone
                 current_time = datetime.now(timezone.utc)
                 minute = (current_time.minute // 15) * 15
                 bucket_time = current_time.replace(minute=minute, second=0, microsecond=0)

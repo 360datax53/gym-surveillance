@@ -10,3 +10,4 @@ scipy
 # DeepFace for member face recognition
 # Install separately if needed: pip install deepface tf-keras
 deepface
+requests
