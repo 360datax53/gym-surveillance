@@ -28,9 +28,11 @@ export default function SettingsPage() {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) return
 
+    const slug = newName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+
     const { data: newOrg, error: orgError } = await supabase
       .from('organizations')
-      .insert({ name: newName, city: newCity })
+      .insert({ name: newName, city: newCity, slug: slug })
       .select()
       .single()
 
