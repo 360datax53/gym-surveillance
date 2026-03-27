@@ -147,7 +147,7 @@ class RTSPStreamProcessor:
                             for m in res.data:
                                 try:
                                     raw_enc = m['face_encoding']
-                                    if isinstance(raw_enc, str):
+                                    if isinstance(raw_enc, str) and raw_enc.strip():
                                         enc = json.loads(raw_enc)
                                     else:
                                         enc = raw_enc
