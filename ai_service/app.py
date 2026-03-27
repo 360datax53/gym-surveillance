@@ -54,10 +54,22 @@ class RTSPStreamProcessor:
         self.is_running = False
         self.cap = None
         self.thread = None
+        self.organization_id = None
+        self.zone = None
+        self.current_bucket_str = None
+        self.current_bucket_max = 0
 
     def start(self):
         if self.is_running:
             return
+            
+        try:
+            cam_data = supabase.table('cameras').select('organization_id, zone').eq('id', self.camera_id).single().execute()
+            if cam_data.data:
+                self.organization_id = cam_data.data.get('organization_id')
+                self.zone = cam_data.data.get('zone')
+        except Exception as e:
+            print(f"Error fetching camera metadata for {self.camera_id}: {e}")
         
         # On Mac ARM, hardware acceleration can cause SIGABRT crashes with HEVC RTSP
         # We force software decoding and TCP transport to prevent "PPS id out of range"
@@ -171,6 +183,44 @@ class RTSPStreamProcessor:
                 supabase.table('detections').insert(db_entries).execute()
         except Exception as e:
             print(f"Error storing detections for {self.camera_id}: {e}")
+
+        # Heatmap update logic
+        try:
+            if self.organization_id and self.zone:
+                from datetime import datetime, timezone
+                current_time = datetime.now(timezone.utc)
+                minute = (current_time.minute // 15) * 15
+                bucket_time = current_time.replace(minute=minute, second=0, microsecond=0)
+                bucket_str = bucket_time.isoformat()
+                
+                current_faces = len(detections)
+                
+                if self.current_bucket_str != bucket_str:
+                    self.current_bucket_str = bucket_str
+                    self.current_bucket_max = current_faces
+                    self._upsert_heatmap_data(bucket_str, current_faces)
+                elif current_faces > self.current_bucket_max:
+                    self.current_bucket_max = current_faces
+                    self._upsert_heatmap_data(bucket_str, current_faces)
+        except Exception as e:
+            print(f"Error updating heatmap for {self.camera_id}: {e}")
+
+    def _upsert_heatmap_data(self, bucket_str, count):
+        res = supabase.table('heatmap_data').select('id, person_count').eq('organization_id', self.organization_id).eq('zone', self.zone).eq('time_bucket', bucket_str).execute()
+        
+        if res.data and len(res.data) > 0:
+            existing_id = res.data[0]['id']
+            existing_count = res.data[0]['person_count'] or 0
+            if count > existing_count:
+                supabase.table('heatmap_data').update({'person_count': count}).eq('id', existing_id).execute()
+        else:
+            supabase.table('heatmap_data').insert({
+                'organization_id': self.organization_id,
+                'zone': self.zone,
+                'time_bucket': bucket_str,
+                'person_count': count,
+                'camera_id': self.camera_id
+            }).execute()
 
     def stop(self):
         self.is_running = False

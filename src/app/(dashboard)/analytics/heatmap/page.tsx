@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 
 interface ZoneStat {
   total: number
@@ -38,11 +39,97 @@ export default function HeatmapPage() {
   const [placingCameraId, setPlacingCameraId] = useState<string | null>(null)
   const [mapUrl, setMapUrl] = useState('/floorplan.png')
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
 
   // Rename State
   const [editingCameraId, setEditingCameraId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [isUploading, setIsUploading] = useState(false)
+
+  // Palette generation function
+  const getHeatmapPalette = () => {
+    const canvas = document.createElement('canvas')
+    canvas.width = 256
+    canvas.height = 1
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return new Uint8ClampedArray(0)
+    const grad = ctx.createLinearGradient(0, 0, 256, 0)
+    // Transparent -> Green -> Yellow -> Orange -> Red (Matches the Legend!)
+    grad.addColorStop(0.0, 'rgba(34, 197, 94, 0)')
+    grad.addColorStop(0.3, 'rgba(34, 197, 94, 1)')  // Green (Quiet)
+    grad.addColorStop(0.6, 'rgba(250, 204, 21, 1)') // Yellow (Moderate)
+    grad.addColorStop(0.8, 'rgba(249, 115, 22, 1)') // Orange (Busy)
+    grad.addColorStop(1.0, 'rgba(239, 68, 68, 1)')  // Red (Crowded)
+    ctx.fillStyle = grad
+    ctx.fillRect(0, 0, 256, 1)
+    return ctx.getImageData(0, 0, 256, 1).data
+  }
+
+  // Effect to draw on canvas when positions, cameras, or heatmapData changes
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas || !heatmapData) return
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    
+    // Resize canvas to match display size for crisp rendering
+    const { width, height } = canvas.getBoundingClientRect()
+    canvas.width = width
+    canvas.height = height
+
+    ctx.clearRect(0,0, canvas.width, canvas.height)
+    
+    // Ensure we have active cameras to render
+    let hasData = false
+
+    // Draw spots (as black with blurry alpha)
+    cameras.forEach(camera => {
+      const pos = positions[camera.id]
+      const stats = heatmapData.zoneStats[camera.zone]
+      if (pos && stats && stats.peak > 0) {
+        hasData = true
+        const x = (pos.x / 100) * canvas.width
+        const y = (pos.y / 100) * canvas.height
+        
+        // Intensity scaling
+        const radius = Math.min(400, 150 + stats.peak * 20)
+        const intensity = Math.min(1, stats.peak / 15) // Peak opacity
+        
+        const grad = ctx.createRadialGradient(x, y, 0, x, y, radius)
+        grad.addColorStop(0, `rgba(0,0,0, ${intensity})`)
+        grad.addColorStop(1, 'rgba(0,0,0,0)')
+        
+        ctx.fillStyle = grad
+        ctx.beginPath()
+        ctx.arc(x, y, radius, 0, Math.PI * 2)
+        ctx.fill()
+      }
+    })
+
+    if (!hasData) return
+
+    // Apply color palette based on alpha
+    const imgData = ctx.getImageData(0,0, canvas.width, canvas.height)
+    const data = imgData.data
+    const palette = getHeatmapPalette()
+    
+    if (palette.length === 0) return
+
+    for (let i = 3; i < data.length; i += 4) {
+      const alpha = data[i]
+      if (alpha > 0) {
+        // Find corresponding color in the 256-width palette
+        const offset = alpha * 4
+        data[i-3] = palette[offset]     // R
+        data[i-2] = palette[offset + 1] // G
+        data[i-1] = palette[offset + 2] // B
+        data[i] = Math.min(255, alpha * 1.5) // A 
+      }
+    }
+    ctx.putImageData(imgData, 0, 0)
+    
+  }, [heatmapData, positions, cameras, mapUrl])
+
 
   useEffect(() => {
     // Load saved camera positions from localStorage
@@ -85,51 +172,7 @@ export default function HeatmapPage() {
     }
   }
 
-  const getMarkerColor = (stats?: ZoneStat) => {
-    if (!stats) return 'rgba(100, 116, 139, 0.4)' // Gray - No Data
-    const intensity = stats.peak
-    if (intensity > 20) return 'rgba(239, 68, 68, 0.8)' // Red - Crowded
-    if (intensity > 10) return 'rgba(245, 158, 11, 0.8)' // Orange - Busy
-    if (intensity > 5) return 'rgba(252, 211, 77, 0.8)' // Yellow - Moderate
-    return 'rgba(34, 197, 94, 0.8)' // Green - Quiet
-  }
-
-  const getMarkerShadow = (stats?: ZoneStat) => {
-    if (!stats) return 'none'
-    const intensity = stats.peak
-    if (intensity > 20) return '0 0 30px rgba(239, 68, 68, 0.6)'
-    if (intensity > 10) return '0 0 20px rgba(245, 158, 11, 0.6)'
-    if (intensity > 5) return '0 0 15px rgba(252, 211, 77, 0.6)'
-    return '0 0 10px rgba(34, 197, 94, 0.6)'
-  }
-
-  const getHeatBlob = (stats?: ZoneStat) => {
-    if (!stats) return null
-    const intensity = stats.peak
-    
-    if (intensity > 20) {
-      return {
-        background: `radial-gradient(circle, rgba(239,68,68,0.85) 0%, rgba(245,158,11,0.5) 40%, transparent 70%)`,
-        size: '300px'
-      }
-    }
-    if (intensity > 10) {
-      return {
-        background: `radial-gradient(circle, rgba(245,158,11,0.8) 0%, rgba(252,211,77,0.5) 40%, transparent 70%)`,
-        size: '250px'
-      }
-    }
-    if (intensity > 5) {
-      return {
-        background: `radial-gradient(circle, rgba(252,211,77,0.8) 0%, rgba(34,197,94,0.4) 50%, transparent 70%)`,
-        size: '200px'
-      }
-    }
-    return {
-       background: `radial-gradient(circle, rgba(34,197,94,0.7) 0%, rgba(59,130,246,0.3) 50%, transparent 70%)`,
-       size: '150px'
-    }
-  }
+  // Removed unused CSS blob and marker color getters.
 
   const handleMapClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!isEditMode || !placingCameraId) return
@@ -183,6 +226,37 @@ export default function HeatmapPage() {
       setEditingCameraId(null)
     }
   }
+
+  // Hourly Aggregation for Table
+  const hourlyData = heatmapData?.timeline.reduce((acc: any, curr: any) => {
+    const date = new Date(curr.time)
+    const hour = date.getHours()
+    const hourFormatted = `${hour % 12 === 0 ? 12 : hour % 12}:00 ${hour >= 12 ? 'PM' : 'AM'}`
+    const hourKey = hourFormatted
+    
+    if (!acc[hourKey]) {
+      acc[hourKey] = { hour: hourKey, hourNum: hour, peak: 0, busiestZone: curr.zone, zones: {} }
+    }
+    
+    acc[hourKey].zones[curr.zone] = (acc[hourKey].zones[curr.zone] || 0) + curr.people
+    if (curr.people > acc[hourKey].peak) {
+      acc[hourKey].peak = curr.people
+    }
+    
+    let max = -1
+    let bZone = ''
+    Object.entries(acc[hourKey].zones).forEach(([z, count]: any) => {
+      if (count > max) {
+        max = count
+        bZone = z
+      }
+    })
+    acc[hourKey].busiestZone = bZone
+    
+    return acc
+  }, {})
+  
+  const hourlyList = hourlyData ? Object.values(hourlyData).sort((a: any, b: any) => a.hourNum - b.hourNum) : []
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8">
@@ -247,7 +321,13 @@ export default function HeatmapPage() {
               }}
             >
               {/* Floor Plan Placeholder Overlay (if image is missing) */}
-              <div className="absolute inset-0 bg-blue-900/10 mix-blend-overlay pointer-events-none"></div>
+              <div className="absolute inset-0 bg-gray-900/5 mix-blend-overlay pointer-events-none z-0"></div>
+
+              {/* Canvas Heatmap Overlay */}
+              <canvas 
+                ref={canvasRef} 
+                className="absolute inset-0 w-full h-full pointer-events-none mix-blend-multiply opacity-80 z-0" 
+              />
 
               {/* Render Placed Cameras */}
               {cameras.map(camera => {
@@ -262,21 +342,6 @@ export default function HeatmapPage() {
                     className="absolute group -translate-x-1/2 -translate-y-1/2 transition-all duration-500 ease-out z-10"
                     style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
                   >
-                    {/* Organic Heat Blob (Underneath) */}
-                    {stats && (
-                      <div 
-                        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none rounded-full"
-                        style={{
-                          width: getHeatBlob(stats)?.size,
-                          height: getHeatBlob(stats)?.size,
-                          background: getHeatBlob(stats)?.background,
-                          filter: 'blur(20px)',
-                          mixBlendMode: 'multiply',
-                          opacity: 0.9,
-                          transition: 'all 2s ease-in-out'
-                        }}
-                      />
-                    )}
 
                     {/* Anchor point for editing/hovering */}
                     <div 
@@ -348,30 +413,43 @@ export default function HeatmapPage() {
                     )}
                   </div>
                   
-                  <div className="h-[200px] flex items-end gap-1 overflow-x-auto pb-2 custom-scrollbar">
+                  <div className="h-[200px] w-full pt-4">
                     {heatmapData.timeline.length > 0 ? (
-                      heatmapData.timeline.map((point, idx) => {
-                        const maxPeople = Math.max(...heatmapData.timeline.map(p => p.people)) || 1
-                        const height = (point.people / maxPeople) * 100
-                        
-                        return (
-                          <div
-                            key={idx}
-                            style={{ height: `${Math.max(height, 5)}%` }}
-                            className={`flex-1 min-w-[8px] rounded-t-md transition-all group relative cursor-crosshair ${
-                              point.people > 15 ? 'bg-red-500' : point.people > 8 ? 'bg-amber-400' : 'bg-blue-500'
-                            } hover:brightness-110 opacity-90 hover:opacity-100`}
-                          >
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10 w-32 pb-1">
-                              <div className="bg-gray-900 text-white text-[10px] p-2 rounded shadow-2xl">
-                                <p className="font-bold">{new Date(point.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                                <p className="text-blue-300">{point.people} detected</p>
-                                <p className="text-gray-400 italic break-words">{point.zone.replace('_', ' ')}</p>
-                              </div>
-                            </div>
-                          </div>
-                        )
-                      })
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={heatmapData.timeline}>
+                          <XAxis 
+                            dataKey="time" 
+                            tickFormatter={(time) => new Date(time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} 
+                            fontSize={10} stroke="#9ca3af" tickMargin={10} 
+                            minTickGap={20}
+                          />
+                          <Tooltip 
+                            content={({ active, payload }) => {
+                              if (active && payload && payload.length) {
+                                const data = payload[0].payload
+                                return (
+                                  <div className="bg-gray-900 text-white text-xs p-3 rounded-lg shadow-xl border border-gray-700">
+                                    <p className="font-bold mb-1">{new Date(data.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                                    <p className="text-blue-400 font-bold">{data.people} people</p>
+                                    <p className="text-gray-400 capitalize">{data.zone.replace(/_/g, ' ')}</p>
+                                  </div>
+                                )
+                              }
+                              return null
+                            }}
+                            cursor={{ fill: 'rgba(0,0,0,0.05)' }}
+                          />
+                          <Bar dataKey="people" radius={[4, 4, 0, 0]}>
+                            {heatmapData.timeline.map((entry: any, index: number) => (
+                              <Cell 
+                                key={`cell-${index}`} 
+                                className="transition-all duration-300"
+                                fill={entry.people > 20 ? '#ef4444' : entry.people > 10 ? '#f59e0b' : '#22c55e'} 
+                              />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-sm text-gray-400 italic">No timeline data available for this date</div>
                     )}
@@ -416,8 +494,56 @@ export default function HeatmapPage() {
                   </div>
                 </div>
 
+                {/* Hourly Log Table */}
+                <div className="lg:col-span-3 bg-white p-0 rounded-xl border border-gray-200 shadow-sm overflow-hidden mt-6">
+                  <div className="bg-gray-50 p-4 border-b border-gray-200">
+                    <h2 className="text-lg font-bold text-gray-800">Hourly Traffic Log</h2>
+                    <p className="text-xs text-gray-500">Peak metrics condensed by hour</p>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm text-gray-600">
+                      <thead className="bg-gray-50/50 text-xs uppercase text-gray-500 border-b border-gray-100">
+                        <tr>
+                          <th className="px-6 py-4 font-bold">Hour</th>
+                          <th className="px-6 py-4 font-bold">Busiest Zone</th>
+                          <th className="px-6 py-4 font-bold">Peak Occupancy</th>
+                          <th className="px-6 py-4 font-bold">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {hourlyList.map((data: any, i) => (
+                          <tr key={i} className="hover:bg-blue-50/30 transition-colors">
+                            <td className="px-6 py-4 font-bold text-gray-900">{data.hour}</td>
+                            <td className="px-6 py-4 font-medium capitalize text-blue-600">
+                              {data.busiestZone ? data.busiestZone.replace(/_/g, ' ') : 'N/A'}
+                            </td>
+                            <td className="px-6 py-4 font-bold">{data.peak}</td>
+                            <td className="px-6 py-4">
+                              <span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                                data.peak > 20 ? 'bg-red-100 text-red-700' :
+                                data.peak > 10 ? 'bg-amber-100 text-amber-700' :
+                                'bg-green-100 text-green-700'
+                              }`}>
+                                {data.peak > 20 ? 'Crowded' : data.peak > 10 ? 'Busy' : 'Normal'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                        {hourlyList.length === 0 && (
+                          <tr>
+                            <td colSpan={4} className="px-6 py-8 text-center text-gray-400 italic">
+                              No hourly data recorded for this date.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
               </div>
             )}
+            
           </div>
 
           {/* Sidebar - Camera List & Legend */}

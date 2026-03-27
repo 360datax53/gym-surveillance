@@ -217,13 +217,13 @@ export default function CamerasPage() {
           onClick={() => router.push('/dashboard/cameras/new')}
           style={{
             padding: '0.75rem 1.5rem',
-            backgroundColor: '#00c853',
+            backgroundColor: '#da291c',
             color: 'white',
             border: 'none',
             borderRadius: 'var(--border-radius-md)',
             fontWeight: 700,
             cursor: 'pointer',
-            boxShadow: '0 4px 12px rgba(0, 200, 83, 0.2)'
+            boxShadow: '0 4px 12px rgba(218, 41, 28, 0.2)'
           }}
         >
           + Add Camera
@@ -450,7 +450,7 @@ export default function CamerasPage() {
                         style={{
                           width: '100%',
                           padding: '0.6rem',
-                          backgroundColor: '#2563eb',
+                          backgroundColor: '#da291c',
                           color: 'white',
                           border: 'none',
                           borderRadius: '4px',

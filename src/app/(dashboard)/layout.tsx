@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
+import { Menu } from 'lucide-react'
 
 import Sidebar from '@/components/Sidebar'
 
@@ -13,6 +14,7 @@ export default function DashboardLayout({
 }) {
   const router = useRouter()
   const [isAuthed, setIsAuthed] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -45,9 +47,25 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
-      <Sidebar />
-      <main className="flex-1 overflow-y-auto custom-scrollbar">
+    <div className="flex h-screen bg-gray-50 overflow-hidden relative">
+      {/* Mobile Header / Hamburger */}
+      <div className="md:hidden absolute top-0 left-0 right-0 h-16 bg-white border-b border-gray-200 flex items-center px-4 z-20 shadow-sm">
+        <button onClick={() => setSidebarOpen(true)} className="p-2 text-gray-600 hover:text-gray-900 focus:outline-none">
+          <Menu className="h-6 w-6" />
+        </button>
+        <span className="ml-4 font-bold text-gray-800 tracking-tight">Snap Fitness</span>
+      </div>
+
+      {sidebarOpen && (
+        <div className="fixed inset-0 bg-black/60 z-30 md:hidden" onClick={() => setSidebarOpen(false)} />
+      )}
+
+      {/* Sidebar Container */}
+      <div className={`fixed inset-y-0 left-0 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition duration-200 ease-in-out z-40`}>
+        <Sidebar onClose={() => setSidebarOpen(false)} />
+      </div>
+
+      <main className="flex-1 overflow-y-auto custom-scrollbar pt-16 md:pt-0">
         {children}
       </main>
     </div>

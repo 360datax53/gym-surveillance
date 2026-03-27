@@ -201,7 +201,7 @@ export default function CameraFeed({ camera, organizationId }: CameraFeedProps) 
         />
 
         <div style={{ position: 'absolute', top: '20px', right: '20px', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }}>
-          <div style={{ background: matchedMember ? '#00c853' : streamActive ? '#1e88e5' : '#555', color: '#fff', padding: '6px 12px', borderRadius: '4px', fontSize: '11px', fontWeight: 900, letterSpacing: '0.1em' }}>
+          <div style={{ background: matchedMember ? '#00c853' : streamActive ? '#da291c' : '#555', color: '#fff', padding: '6px 12px', borderRadius: '4px', fontSize: '11px', fontWeight: 900, letterSpacing: '0.1em' }}>
             {matchedMember ? '✓ VERIFIED' : streamActive ? 'ANALYZING...' : 'CONNECTING...'}
           </div>
           <div style={{ background: 'rgba(0,0,0,0.8)', border: '1px solid #333', color: '#00e676', padding: '4px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 600 }}>
