@@ -387,7 +387,7 @@ export default function HeatmapPage() {
 
             {/* Below Map - Summary Stats */}
             {heatmapData && (
-              <div className="grid grid-cols-3 gap-6 pt-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 pt-4">
                 <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm text-center">
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Total Foot Traffic</p>
                   <p className="text-3xl font-black text-gray-900">{heatmapData.totalVisitors}</p>
@@ -408,7 +408,7 @@ export default function HeatmapPage() {
             )}
             {/* Advanced Reporting Analytics */}
             {heatmapData && !isEditMode && (
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-8">
                 
                 {/* Timeline Chart */}
                 <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-gray-200 shadow-sm space-y-4">

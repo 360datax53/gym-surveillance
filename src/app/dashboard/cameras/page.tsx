@@ -53,7 +53,9 @@ export default function CamerasPage() {
 
   const toggleProcessing = async (camera: Camera) => {
     const isProcessing = processingStatus[camera.id]
-    const endpoint = isProcessing ? 'http://localhost:5005/api/stop-rtsp' : 'http://localhost:5005/api/process-rtsp'
+    const hostname = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+    const aiServiceUrl = `http://${hostname}:5005`;
+    const endpoint = isProcessing ? `${aiServiceUrl}/api/stop-rtsp` : `${aiServiceUrl}/api/process-rtsp`
     
     try {
       const response = await fetch(endpoint, {
@@ -160,7 +162,8 @@ export default function CamerasPage() {
     // Poll AI service health to get active streams
     const checkAIHealth = async () => {
       try {
-        const res = await fetch('http://localhost:5005/health')
+        const hostname = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+        const res = await fetch(`http://${hostname}:5005/health`)
         await res.json()
         // In a real app, we'd sync active_streams with our cameras list
       } catch (e) {}
@@ -230,7 +233,7 @@ export default function CamerasPage() {
         </button>
       </header>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
         {/* ... stats cards ... */}
         <div style={{
           backgroundColor: 'var(--color-background-primary)',
@@ -267,7 +270,7 @@ export default function CamerasPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '1.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
         {cameras.map((camera) => (
           <div key={camera.id} style={{
             backgroundColor: 'var(--color-background-primary)',

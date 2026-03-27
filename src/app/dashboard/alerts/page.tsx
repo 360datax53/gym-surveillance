@@ -200,8 +200,15 @@ export default function AlertsPage() {
                 transition: 'all 0.2s ease-in-out'
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1.5rem' }}>
-                <div style={{ flex: 1 }}>
+              <div style={{ 
+                display: 'flex', 
+                flexDirection: 'row', 
+                flexWrap: 'wrap',
+                justifyContent: 'space-between', 
+                alignItems: 'flex-start', 
+                gap: '1.5rem' 
+              }}>
+                <div style={{ flex: '1 1 300px', minWidth: '280px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
                     <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600, color: 'var(--color-text-primary)' }}>
                       {(alert.detection_type || alert.alert_type || 'DETECTION').replace(/_/g, ' ').toUpperCase()}
@@ -252,7 +259,7 @@ export default function AlertsPage() {
                 </div>
 
                 {!alert.resolved && (
-                  <div style={{ width: '300px', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <div style={{ flex: '1 1 300px', width: '100%', maxWidth: '400px', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                     <textarea
                       placeholder="Add resolution notes (e.g., 'Checked, member was authorized')"
                       value={notes[alert.id] || ''}

@@ -46,7 +46,9 @@ export default function CameraFeed({ camera, organizationId }: CameraFeedProps) 
       if (cancelled) return
 
       try {
-        const res = await fetch(`http://localhost:5005/api/snapshot/${camera.id}`, {
+        const hostname = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+        const aiServiceUrl = `http://${hostname}:5005`;
+        const res = await fetch(`${aiServiceUrl}/api/snapshot/${camera.id}`, {
           cache: 'no-store'
         })
 
@@ -101,7 +103,9 @@ export default function CameraFeed({ camera, organizationId }: CameraFeedProps) 
 
     const pollDetections = async () => {
       try {
-        const res = await fetch(`http://localhost:5005/api/detections/${camera.id}`)
+        const hostname = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+        const aiServiceUrl = `http://${hostname}:5005`;
+        const res = await fetch(`${aiServiceUrl}/api/detections/${camera.id}`)
         if (res.ok) {
           const data = await res.json()
           setDetections(data.detections || [])
