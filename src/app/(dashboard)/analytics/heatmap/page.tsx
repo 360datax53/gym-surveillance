@@ -30,7 +30,8 @@ export default function HeatmapPage() {
   const [heatmapData, setHeatmapData] = useState<HeatmapData | null>(null)
   const [cameras, setCameras] = useState<Camera[]>([])
   const [selectedDate, setSelectedDate] = useState(() => {
-    const d = new Date()
+    // Force UK (Europe/London) time for the default date
+    const d = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/London' }))
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   })
   const [loading, setLoading] = useState(true)

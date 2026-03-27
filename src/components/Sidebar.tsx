@@ -33,26 +33,46 @@ const analyticsItems = [
   { icon: AlertTriangle, label: 'Behavioral Alerts', href: '/analytics/behavioral-alerts' },
 ]
 
-const mockOrgs = [
-  { id: '1', name: 'Dartford', city: 'United Kingdom' },
-  { id: '2', name: 'Herne Bay', city: 'United Kingdom' },
-  { id: '3', name: 'Isle of Wight', city: 'United Kingdom' },
-  { id: '4', name: 'High Wycombe', city: 'United Kingdom' },
-  { id: '5', name: 'Whitstable', city: 'United Kingdom' },
-]
-
 export default function Sidebar({ onClose }: { onClose?: () => void }) {
   const pathname = usePathname()
   const router = useRouter()
-  const [selectedOrg, setSelectedOrg] = useState(mockOrgs[0].id)
+  const [organizations, setOrganizations] = useState<any[]>([])
+  const [selectedOrg, setSelectedOrg] = useState<string | null>(null)
   const [orgDropdownOpen, setOrgDropdownOpen] = useState(false)
   const [user, setUser] = useState<any>(null)
 
   useEffect(() => {
     const supabase = createClient()
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    
+    async function loadData() {
+      const { data: { session } } = await supabase.auth.getSession()
       setUser(session?.user || null)
-    })
+
+      if (session?.user) {
+        // Fetch organizations for this user
+        const { data: orgs, error } = await supabase
+          .from('organizations')
+          .select('*')
+        
+        if (!error && orgs && orgs.length > 0) {
+          setOrganizations(orgs)
+          setSelectedOrg(orgs[0].id)
+        } else {
+          // Fallback to initial mock if empty (for first setup)
+          const fallback = [
+            { id: '1', name: 'Dartford', city: 'United Kingdom' },
+            { id: '2', name: 'Herne Bay', city: 'United Kingdom' },
+            { id: '3', name: 'Isle of Wight', city: 'United Kingdom' },
+            { id: '4', name: 'High Wycombe', city: 'United Kingdom' },
+            { id: '5', name: 'Whitstable', city: 'United Kingdom' },
+          ]
+          setOrganizations(fallback)
+          setSelectedOrg(fallback[0].id)
+        }
+      }
+    }
+
+    loadData()
   }, [])
 
   const handleLogout = async () => {
@@ -61,7 +81,7 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
     router.push('/auth/login')
   }
 
-  const currentOrg = mockOrgs.find(o => o.id === selectedOrg)
+  const currentOrg = organizations.find(o => o.id === selectedOrg)
   const userInitial = (user?.email?.[0] || 'U').toUpperCase()
   const userName = user?.email?.split('@')[0] || 'User'
 
@@ -91,8 +111,8 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
               <Building2 className="h-3.5 w-3.5 text-white" />
             </div>
             <div className="min-w-0">
-              <p className="text-[13px] font-semibold text-gray-200 truncate">{currentOrg?.name}</p>
-              <p className="text-[10px] text-gray-500">{currentOrg?.city}</p>
+              <p className="text-[13px] font-semibold text-gray-200 truncate">{currentOrg?.name || 'Select Location'}</p>
+              <p className="text-[10px] text-gray-500">{currentOrg?.city || 'Location'}</p>
             </div>
           </div>
           <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform flex-shrink-0 ${orgDropdownOpen ? 'rotate-180' : ''}`} />
@@ -100,7 +120,7 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
 
         {orgDropdownOpen && (
           <div className="mt-1 bg-gray-800 rounded-lg border border-white/[0.06] overflow-hidden shadow-xl">
-            {mockOrgs.map(org => (
+            {organizations.map(org => (
               <div
                 key={org.id}
                 onClick={() => {
