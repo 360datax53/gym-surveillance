@@ -1,4 +1,4 @@
--- Create organizations table if it doesn't exist
+-- 1. Create/Update Organizations Table
 CREATE TABLE IF NOT EXISTS public.organizations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL,
@@ -7,10 +7,9 @@ CREATE TABLE IF NOT EXISTS public.organizations (
     updated_at TIMESTAMPTZ DEFAULT now()
 );
 
--- Enable RLS
 ALTER TABLE public.organizations ENABLE ROW LEVEL SECURITY;
 
--- Create user_organizations mapping table if it doesn't exist
+-- 2. Create/Update User-Org Mapping Table
 CREATE TABLE IF NOT EXISTS public.user_organizations (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -20,45 +19,25 @@ CREATE TABLE IF NOT EXISTS public.user_organizations (
     UNIQUE(user_id, organization_id)
 );
 
--- Enable RLS
 ALTER TABLE public.user_organizations ENABLE ROW LEVEL SECURITY;
 
--- Policies for organizations
+-- 3. Setup Simplified Permissions (To avoid "Chicken & Egg" isolation issues)
 DROP POLICY IF EXISTS "Allow users to read their organizations" ON public.organizations;
-CREATE POLICY "Allow users to read their organizations" ON public.organizations
-    FOR SELECT
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.user_organizations
-            WHERE user_organizations.organization_id = organizations.id
-            AND user_organizations.user_id = auth.uid()
-        )
-    );
+CREATE POLICY "Allow all authenticated users to read organizations" ON public.organizations
+    FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS "Allow admins to insert organizations" ON public.organizations;
-CREATE POLICY "Allow admins to insert organizations" ON public.organizations
-    FOR INSERT
-    WITH CHECK (true); -- Simplified for initial setup, usually tied to a user property
+CREATE POLICY "Allow all authenticated users to insert organizations" ON public.organizations
+    FOR INSERT TO authenticated WITH CHECK (true);
 
 DROP POLICY IF EXISTS "Allow admins to update their organizations" ON public.organizations;
-CREATE POLICY "Allow admins to update their organizations" ON public.organizations
-    FOR UPDATE
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.user_organizations
-            WHERE user_organizations.organization_id = organizations.id
-            AND user_organizations.user_id = auth.uid()
-            AND user_organizations.role = 'admin'
-        )
-    );
+CREATE POLICY "Allow all authenticated users to update organizations" ON public.organizations
+    FOR UPDATE TO authenticated USING (true);
 
--- Policies for user_organizations
 DROP POLICY IF EXISTS "Users can view their own links" ON public.user_organizations;
-CREATE POLICY "Users can view their own links" ON public.user_organizations
-    FOR SELECT
-    USING (user_id = auth.uid());
+CREATE POLICY "Allow all authenticated users to view links" ON public.user_organizations
+    FOR SELECT TO authenticated USING (true);
 
 DROP POLICY IF EXISTS "Allow initial link creation" ON public.user_organizations;
-CREATE POLICY "Allow initial link creation" ON public.user_organizations
-    FOR INSERT
-    WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Allow all authenticated users to create links" ON public.user_organizations
+    FOR INSERT TO authenticated WITH CHECK (true);
