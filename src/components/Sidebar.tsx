@@ -33,46 +33,20 @@ const analyticsItems = [
   { icon: AlertTriangle, label: 'Behavioral Alerts', href: '/analytics/behavioral-alerts' },
 ]
 
+import { useOrganization } from '@/context/OrganizationContext'
+
 export default function Sidebar({ onClose }: { onClose?: () => void }) {
   const pathname = usePathname()
   const router = useRouter()
-  const [organizations, setOrganizations] = useState<any[]>([])
-  const [selectedOrg, setSelectedOrg] = useState<string | null>(null)
+  const { organizations, selectedOrgId, setSelectedOrgId, currentOrg, loading: orgsLoading } = useOrganization()
   const [orgDropdownOpen, setOrgDropdownOpen] = useState(false)
   const [user, setUser] = useState<any>(null)
 
   useEffect(() => {
     const supabase = createClient()
-    
-    async function loadData() {
-      const { data: { session } } = await supabase.auth.getSession()
+    supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user || null)
-
-      if (session?.user) {
-        // Fetch organizations for this user
-        const { data: orgs, error } = await supabase
-          .from('organizations')
-          .select('*')
-        
-        if (!error && orgs && orgs.length > 0) {
-          setOrganizations(orgs)
-          setSelectedOrg(orgs[0].id)
-        } else {
-          // Fallback to initial mock if empty (for first setup)
-          const fallback = [
-            { id: '1', name: 'Dartford', city: 'United Kingdom' },
-            { id: '2', name: 'Herne Bay', city: 'United Kingdom' },
-            { id: '3', name: 'Isle of Wight', city: 'United Kingdom' },
-            { id: '4', name: 'High Wycombe', city: 'United Kingdom' },
-            { id: '5', name: 'Whitstable', city: 'United Kingdom' },
-          ]
-          setOrganizations(fallback)
-          setSelectedOrg(fallback[0].id)
-        }
-      }
-    }
-
-    loadData()
+    })
   }, [])
 
   const handleLogout = async () => {
@@ -81,7 +55,6 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
     router.push('/auth/login')
   }
 
-  const currentOrg = organizations.find(o => o.id === selectedOrg)
   const userInitial = (user?.email?.[0] || 'U').toUpperCase()
   const userName = user?.email?.split('@')[0] || 'User'
 
@@ -124,17 +97,17 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
               <div
                 key={org.id}
                 onClick={() => {
-                  setSelectedOrg(org.id)
+                  setSelectedOrgId(org.id)
                   setOrgDropdownOpen(false)
                 }}
                 className={`flex items-center gap-2.5 px-3 py-2.5 cursor-pointer transition-all ${
-                  org.id === selectedOrg 
+                  org.id === selectedOrgId 
                     ? 'bg-[#da291c]/10 text-[#da291c] font-bold' 
                     : 'text-gray-400 hover:bg-white/[0.04] hover:text-gray-200'
                 }`}
               >
                 <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
-                  org.id === selectedOrg ? 'bg-[#da291c]' : 'bg-gray-600'
+                  org.id === selectedOrgId ? 'bg-[#da291c]' : 'bg-gray-600'
                 }`} />
                 <div>
                   <p className="text-[13px] font-medium">{org.name}</p>

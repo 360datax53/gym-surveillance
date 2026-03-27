@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const cookieStore = cookies();
     const supabase = createServerClient(
@@ -25,19 +25,35 @@ export async function GET() {
     );
 
     const { data: { session } } = await supabase.auth.getSession();
+    
+    // 1. Get requested orgId from query
+    const searchParams = new URL(request.url).searchParams;
+    const requestedOrgId = searchParams.get('orgId');
+
+    // 2. Fetch user's authorized organizations
     const { data: userOrgs } = await supabase
       .from('user_organizations')
       .select('organization_id')
       .eq('user_id', session?.user.id);
     
-    const orgIds = userOrgs?.map(uo => uo.organization_id) || [];
+    const authorizedOrgIds = userOrgs?.map(uo => uo.organization_id) || [];
     
     // 3. Fetch cameras
     let query = supabase.from('cameras').select('*');
     
-    if (orgIds.length > 0) {
-      query = query.in('organization_id', orgIds);
+    if (requestedOrgId) {
+      // If specific org requested, verify access
+      if (authorizedOrgIds.includes(requestedOrgId)) {
+        query = query.eq('organization_id', requestedOrgId);
+      } else {
+        // Forbidden access to this org
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      }
+    } else if (authorizedOrgIds.length > 0) {
+      // Fallback to all authorized orgs
+      query = query.in('organization_id', authorizedOrgIds);
     } else if (session) {
+      // No orgs found for user, return empty
       query = query.eq('id', '00000000-0000-0000-0000-000000000000');
     }
 

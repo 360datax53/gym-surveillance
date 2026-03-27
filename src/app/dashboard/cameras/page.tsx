@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import CameraFeed from '@/components/CameraFeed'
 import { useAiHost } from '@/hooks/useAiHost'
+import { useOrganization } from '@/context/OrganizationContext'
 
 interface Camera {
   id: string
@@ -22,6 +23,7 @@ interface Camera {
 }
 
 export default function CamerasPage() {
+  const { selectedOrgId } = useOrganization()
   const [cameras, setCameras] = useState<Camera[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -34,8 +36,9 @@ export default function CamerasPage() {
   const router = useRouter()
 
   const fetchCameras = async () => {
+    if (!selectedOrgId) return
     try {
-      const response = await fetch('/api/cameras')
+      const response = await fetch(`/api/cameras?orgId=${selectedOrgId}`)
       if (!response.ok) {
         const errorData = await response.json()
         throw new Error(errorData.error || 'Failed to fetch cameras')
@@ -171,7 +174,7 @@ export default function CamerasPage() {
     }
     const interval = setInterval(checkAIHealth, 5000)
     return () => clearInterval(interval)
-  }, [])
+  }, [selectedOrgId])
 
   if (loading) {
     return <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-secondary)' }}>Loading cameras...</div>

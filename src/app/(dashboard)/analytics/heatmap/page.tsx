@@ -26,7 +26,10 @@ interface Camera {
   floor_y?: number
 }
 
+import { useOrganization } from '@/context/OrganizationContext'
+
 export default function HeatmapPage() {
+  const { selectedOrgId } = useOrganization()
   const [heatmapData, setHeatmapData] = useState<HeatmapData | null>(null)
   const [cameras, setCameras] = useState<Camera[]>([])
   const [selectedDate, setSelectedDate] = useState(() => {

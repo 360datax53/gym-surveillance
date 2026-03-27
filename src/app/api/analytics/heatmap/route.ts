@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams
-    const organization_id = searchParams.get('org') || '4f5a3104-f5ea-44e5-88be-0ebe205b0a37'
+    const organization_id = searchParams.get('orgId') || searchParams.get('org') || '4f5a3104-f5ea-44e5-88be-0ebe205b0a37'
     const date = searchParams.get('date') || new Date().toISOString().split('T')[0]
 
     const supabase = createClient()

@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { Building2, Plus, Pencil, Save, X, Loader2, AlertCircle } from 'lucide-react'
+import { useOrganization } from '@/context/OrganizationContext'
 
 export default function SettingsPage() {
-  const [organizations, setOrganizations] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const { organizations, loading, setSelectedOrgId, refresh } = useOrganization()
   const [isAdding, setIsAdding] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [newName, setNewName] = useState('')
@@ -15,20 +15,10 @@ export default function SettingsPage() {
 
   const supabase = createClient()
 
-  useEffect(() => {
-    loadOrganizations()
-  }, [])
-
-  async function loadOrganizations() {
-    setLoading(true)
-    const { data, error } = await supabase.from('organizations').select('*').order('name')
-    if (error) {
-      console.error('Error loading orgs:', error)
-      setError('Failed to load organizations. Have you run the SQL migration?')
-    } else {
-      setOrganizations(data || [])
-    }
-    setLoading(false)
+  async function refreshData() {
+    // For now, simple window reload is the most reliable way to refresh the global context 
+    // unless we add a refresh function to the context itself.
+    window.location.reload()
   }
 
   async function handleAdd() {
@@ -58,7 +48,7 @@ export default function SettingsPage() {
 
     setNewName('')
     setIsAdding(false)
-    loadOrganizations()
+    refresh()
   }
 
   async function handleUpdate(id: string) {
@@ -74,7 +64,7 @@ export default function SettingsPage() {
       setError(error.message)
     } else {
       setEditingId(null)
-      loadOrganizations()
+      refresh()
     }
   }
 
