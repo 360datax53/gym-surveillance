@@ -149,7 +149,7 @@ export async function PATCH(request: NextRequest) {
     );
 
     const body = await request.json();
-    const { id, name, zone } = body;
+    const { id, name, zone, floor_x, floor_y } = body;
 
     if (!id) {
        return NextResponse.json({ error: 'Missing id' }, { status: 400 });
@@ -158,6 +158,8 @@ export async function PATCH(request: NextRequest) {
     const updates: any = {};
     if (name) updates.name = name;
     if (zone) updates.zone = zone;
+    if (typeof floor_x === 'number') updates.floor_x = floor_x;
+    if (typeof floor_y === 'number') updates.floor_y = floor_y;
 
     const { data, error } = await supabase
       .from('cameras')

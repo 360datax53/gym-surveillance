@@ -234,21 +234,30 @@ class RTSPStreamProcessor:
             print(f"Error updating heatmap for {self.camera_id}: {e}")
 
     def _upsert_heatmap_data(self, bucket_str, count):
-        res = supabase.table('heatmap_data').select('id, person_count').eq('organization_id', self.organization_id).eq('zone', self.zone).eq('time_bucket', bucket_str).execute()
-        
-        if res.data and len(res.data) > 0:
-            existing_id = res.data[0]['id']
-            existing_count = res.data[0]['person_count'] or 0
-            if count > existing_count:
-                supabase.table('heatmap_data').update({'person_count': count}).eq('id', existing_id).execute()
-        else:
-            supabase.table('heatmap_data').insert({
-                'organization_id': self.organization_id,
-                'zone': self.zone,
-                'time_bucket': bucket_str,
-                'person_count': count,
-                'camera_id': self.camera_id
-            }).execute()
+        if not self.organization_id:
+            return
+            
+        try:
+            # Check if bucket exists for this zone and org
+            res = supabase.table('heatmap_data').select('id, person_count').eq('organization_id', self.organization_id).eq('zone', self.zone).eq('time_bucket', bucket_str).execute()
+            
+            if res.data and len(res.data) > 0:
+                existing_id = res.data[0]['id']
+                existing_count = res.data[0]['person_count'] or 0
+                # Only update if the new count is a new peak for this bucket
+                if count > existing_count:
+                    supabase.table('heatmap_data').update({'person_count': count}).eq('id', existing_id).execute()
+            else:
+                # Create new bucket entry
+                supabase.table('heatmap_data').insert({
+                    'organization_id': self.organization_id,
+                    'zone': self.zone,
+                    'time_bucket': bucket_str,
+                    'person_count': count,
+                    'camera_id': self.camera_id
+                }).execute()
+        except Exception as e:
+            print(f"FAILED to upsert heatmap data for {self.camera_id}: {e}", flush=True)
 
     def stop(self):
         self.is_running = False

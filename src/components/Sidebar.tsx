@@ -8,7 +8,6 @@ import {
   Settings, 
   LogOut, 
   ShieldAlert, 
-  Search,
   Map,
   Footprints,
   AlertTriangle,
@@ -26,7 +25,6 @@ const menuItems = [
   { icon: Camera, label: 'Cameras', href: '/dashboard/cameras' },
   { icon: Users, label: 'Members', href: '/dashboard/members' },
   { icon: ShieldAlert, label: 'Security Alerts', href: '/dashboard/alerts' },
-  { icon: Search, label: 'Global Search', href: '/search' },
 ]
 
 const analyticsItems = [

@@ -25,27 +25,29 @@ export async function GET(request: NextRequest) {
     const timelineData: any[] = []
 
     heatmapData?.forEach((item) => {
+      const zone = item.zone || 'unknown'
       // Aggregating by zone
-      if (!zoneStats[item.zone]) {
-        zoneStats[item.zone] = { total: 0, peak: 0, average: 0, count: 0 }
+      if (!zoneStats[zone]) {
+        zoneStats[zone] = { total: 0, peak: 0, average: 0, count: 0 }
       }
-      zoneStats[item.zone].total += item.person_count
-      zoneStats[item.zone].peak = Math.max(zoneStats[item.zone].peak, item.person_count)
-      zoneStats[item.zone].count += 1
+      // total is a proxy for all detected people over time
+      zoneStats[zone].total += item.person_count
+      zoneStats[zone].peak = Math.max(zoneStats[zone].peak, item.person_count)
+      zoneStats[zone].count += 1
 
       // Flattened timeline data for charting
       timelineData.push({
         time: item.time_bucket,
-        zone: item.zone,
+        zone: zone,
         people: item.person_count
       })
     })
 
     // 3. Finalize analytics metrics
     Object.keys(zoneStats).forEach((zone) => {
-      zoneStats[zone].average = Math.round(
-        zoneStats[zone].total / zoneStats[zone].count
-      )
+      zoneStats[zone].average = zoneStats[zone].count > 0 
+        ? Math.round(zoneStats[zone].total / zoneStats[zone].count)
+        : 0
     })
 
     return NextResponse.json({
@@ -54,7 +56,7 @@ export async function GET(request: NextRequest) {
       zoneStats,
       timeline: timelineData,
       totalVisitors: Object.values(zoneStats).reduce(
-        (sum: number, zone: any) => sum + zone.total,
+        (sum: number, zone: any) => sum + (zone.peak || 0), // Use peak as a better proxy for total unique per zone
         0
       )
     })

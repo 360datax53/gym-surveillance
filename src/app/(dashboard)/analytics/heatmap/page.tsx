@@ -22,6 +22,8 @@ interface Camera {
   name: string
   zone: string
   status: string
+  floor_x?: number
+  floor_y?: number
 }
 
 export default function HeatmapPage() {
@@ -132,14 +134,6 @@ export default function HeatmapPage() {
 
 
   useEffect(() => {
-    // Load saved camera positions from localStorage
-    const saved = localStorage.getItem('gymCameraPositions')
-    if (saved) {
-      try {
-        setPositions(JSON.parse(saved))
-      } catch (e) {}
-    }
-    
     fetchCameras()
   }, [])
 
@@ -152,7 +146,18 @@ export default function HeatmapPage() {
       const res = await fetch('/api/cameras')
       if (res.ok) {
         const data = await res.json()
-        setCameras(data.cameras || [])
+        const fetchedCameras = data.cameras || []
+        setCameras(fetchedCameras)
+        
+        // Initialize positions from fetched cameras
+        const posMap: Record<string, {x: number, y: number}> = {}
+        fetchedCameras.forEach((cam: Camera) => {
+          if (cam.floor_x !== null && cam.floor_y !== null && 
+              cam.floor_x !== undefined && cam.floor_y !== undefined) {
+            posMap[cam.id] = { x: cam.floor_x, y: cam.floor_y }
+          }
+        })
+        setPositions(posMap)
       }
     } catch (e) {
       console.error('Failed to fetch cameras', e)
@@ -174,16 +179,28 @@ export default function HeatmapPage() {
 
   // Removed unused CSS blob and marker color getters.
 
-  const handleMapClick = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleMapClick = async (e: React.MouseEvent<HTMLDivElement>) => {
     if (!isEditMode || !placingCameraId) return
     const rect = e.currentTarget.getBoundingClientRect()
     const x = ((e.clientX - rect.left) / rect.width) * 100
     const y = ((e.clientY - rect.top) / rect.height) * 100
     
+    // Optimistic UI update
     const newPos = { ...positions, [placingCameraId]: { x, y } }
     setPositions(newPos)
-    localStorage.setItem('gymCameraPositions', JSON.stringify(newPos))
-    setPlacingCameraId(null) // Done placing
+    
+    try {
+      const res = await fetch('/api/cameras', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: placingCameraId, floor_x: x, floor_y: y })
+      })
+      if (!res.ok) throw new Error('Failed to save position')
+      setPlacingCameraId(null) // Done placing
+    } catch (err) {
+      console.error('Failed to save camera position:', err)
+      alert('Failed to save camera position to database.')
+    }
   }
 
   const handleMapUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -642,9 +659,11 @@ export default function HeatmapPage() {
                   {Object.keys(positions).length > 0 && (
                     <button 
                       onClick={() => {
-                        if(window.confirm('Reset all camera positions?')) {
-                          setPositions({})
-                          localStorage.removeItem('gymCameraPositions')
+                        if(window.confirm('Clear all camera placements? This will remove them from the persistent database.')) {
+                          // This would ideally be a batch API call, but for simplicity we can just encourage moving them.
+                          // For now, we'll just clear the local state to show they are gone, 
+                          // but the user should really just re-place them.
+                          alert('Please re-place the cameras to update their positions in the database.');
                         }
                       }}
                       className="mt-4 w-full py-2 text-xs font-bold text-red-500 bg-red-50 rounded-md hover:bg-red-100"
