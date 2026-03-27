@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase'
 import { Menu } from 'lucide-react'
+import { OrganizationProvider } from '@/context/OrganizationContext'
 
 import Sidebar from '@/components/Sidebar'
 

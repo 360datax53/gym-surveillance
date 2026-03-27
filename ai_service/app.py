@@ -148,7 +148,18 @@ class RTSPStreamProcessor:
                                 try:
                                     raw_enc = m['face_encoding']
                                     if isinstance(raw_enc, str) and raw_enc.strip():
-                                        enc = json.loads(raw_enc)
+                                        # Handle hex-encoded strings from Supabase (starts with \x)
+                                        if raw_enc.startswith('\\x'):
+                                            try:
+                                                # Convert hex to bytes, then to string
+                                                hex_data = raw_enc[2:]
+                                                enc_str = bytes.fromhex(hex_data).decode('utf-8')
+                                                enc = json.loads(enc_str)
+                                            except Exception as hex_err:
+                                                print(f"Hex decode failed for {m['name']}: {hex_err}", flush=True)
+                                                enc = raw_enc
+                                        else:
+                                            enc = json.loads(raw_enc)
                                     else:
                                         enc = raw_enc
                                         
