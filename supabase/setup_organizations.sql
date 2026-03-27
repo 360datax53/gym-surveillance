@@ -39,6 +39,14 @@ DROP POLICY IF EXISTS "Users can view their own links" ON public.user_organizati
 CREATE POLICY "Allow all authenticated users to view links" ON public.user_organizations
     FOR SELECT TO authenticated USING (true);
 
-DROP POLICY IF EXISTS "Allow initial link creation" ON public.user_organizations;
+DROP POLICY IF EXISTS "Allow all authenticated users to create links" ON public.user_organizations;
 CREATE POLICY "Allow all authenticated users to create links" ON public.user_organizations
     FOR INSERT TO authenticated WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow all authenticated users to delete organizations" ON public.organizations;
+CREATE POLICY "Allow all authenticated users to delete organizations" ON public.organizations
+    FOR DELETE TO authenticated USING (true);
+
+DROP POLICY IF EXISTS "Allow all authenticated users to delete links" ON public.user_organizations;
+CREATE POLICY "Allow all authenticated users to delete links" ON public.user_organizations
+    FOR DELETE TO authenticated USING (true);

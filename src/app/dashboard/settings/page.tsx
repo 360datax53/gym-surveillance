@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase'
-import { Building2, Plus, Pencil, Save, X, Loader2, AlertCircle } from 'lucide-react'
+import { Building2, Plus, Pencil, Save, X, Loader2, AlertCircle, Trash2 } from 'lucide-react'
 import { useOrganization } from '@/context/OrganizationContext'
 
 export default function SettingsPage() {
@@ -66,6 +66,22 @@ export default function SettingsPage() {
       setError(error.message)
     } else {
       setEditingId(null)
+      refresh()
+    }
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm('Are you sure you want to delete this location? All related cameras and data will be removed.')) return
+    setError(null)
+
+    const { error } = await supabase
+      .from('organizations')
+      .delete()
+      .eq('id', id)
+
+    if (error) {
+      setError(error.message)
+    } else {
       refresh()
     }
   }
@@ -182,16 +198,24 @@ export default function SettingsPage() {
                     </button>
                   </>
                 ) : (
-                  <button 
-                    onClick={() => {
-                      setEditingId(org.id)
-                      setNewName(org.name)
-                      setNewCity(org.city)
-                    }} 
-                    className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </button>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => {
+                        setEditingId(org.id)
+                        setNewName(org.name)
+                        setNewCity(org.city)
+                      }} 
+                      className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+                    <button 
+                      onClick={() => handleDelete(org.id)}
+                      className="p-2 text-gray-400 hover:text-red-900 hover:bg-red-50 rounded-lg transition-all"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
