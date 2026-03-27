@@ -117,6 +117,29 @@ export default function MembersPage() {
     input.click();
   };
 
+  const handleDeleteMember = async (memberId: string, memberName: string) => {
+    if (!confirm(`Are you sure you want to delete ${memberName}?`)) return;
+    
+    try {
+      setLoading(true);
+      const res = await fetch(`/api/members/${memberId}`, {
+        method: 'DELETE',
+      });
+      
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to delete member');
+      }
+      
+      setMembers(members.filter(m => m.id !== memberId));
+      alert('Member deleted successfully');
+    } catch (err: any) {
+      alert('Deletion failed: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div style={{ padding: '2rem', textAlign: 'center' }}>
@@ -344,23 +367,42 @@ export default function MembersPage() {
                       {member.membership_end ? new Date(member.membership_end).toLocaleDateString() : '-'}
                     </td>
                     <td style={tdStyle}>
-                      <button 
-                        onClick={() => handleUploadFace(member.id)}
-                        style={{
-                          padding: '0.4rem 0.8rem',
-                          backgroundColor: 'var(--color-background-primary)',
-                          border: '1px solid var(--color-border-tertiary)',
-                          borderRadius: 'var(--border-radius-md)',
-                          fontSize: '12px',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '0.25rem',
-                          color: 'var(--color-text-info)'
-                        }}
-                      >
-                        📷 Upload
-                      </button>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button 
+                          onClick={() => handleUploadFace(member.id)}
+                          style={{
+                            padding: '0.4rem 0.8rem',
+                            backgroundColor: 'var(--color-background-primary)',
+                            border: '1px solid var(--color-border-tertiary)',
+                            borderRadius: 'var(--border-radius-md)',
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.25rem',
+                            color: 'var(--color-text-info)'
+                          }}
+                        >
+                          📷 Upload
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteMember(member.id, member.name)}
+                          style={{
+                            padding: '0.4rem 0.8rem',
+                            backgroundColor: 'var(--color-background-primary)',
+                            border: '1px solid var(--color-border-danger, #ff4444)',
+                            borderRadius: 'var(--border-radius-md)',
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.25rem',
+                            color: 'var(--color-text-danger, #ff4444)'
+                          }}
+                        >
+                          🗑️ Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
