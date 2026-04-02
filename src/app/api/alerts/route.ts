@@ -36,31 +36,33 @@ export async function GET() {
     
     const orgIds = userOrgs?.map(uo => uo.organization_id) || [];
     
-    // 3. Fetch detections (using the table name provided by user)
-    let query = supabase.from('detections').select('*');
-    
+    // 3. Fetch alerts from the alerts table
+    let query = supabase.from('alerts').select('*, cameras(name, zone)');
+
     if (orgIds.length > 0) {
       query = query.in('organization_id', orgIds);
     } else if (session) {
-      // If user is logged in but has no assigned orgs, they shouldn't see anything
-      // RLS will also handle this, but we'll be explicit.
       query = query.eq('id', '00000000-0000-0000-0000-000000000000');
     }
 
-    const { data, error } = await query
-      .order('detection_time', { ascending: false });
+    const { data, error } = await query.order('created_at', { ascending: false });
 
-    if (error) {
-      // Provide more helpful context for the common RLS parameter error
-      if (error.message.includes('app.current_org_id')) {
-        return NextResponse.json({ 
-          error: `Database RLS policy error: The "detections" table expects "app.current_org_id" to be set. Please run the SQL fix from the implementation plan in your Supabase SQL Editor.` 
-        }, { status: 500 });
-      }
-      throw error;
-    }
+    if (error) throw error;
 
-    return NextResponse.json({ alerts: data })
+    // Map alerts table fields to what the UI expects
+    const mapped = (data || []).map((a: any) => ({
+      ...a,
+      alert_type: a.alert_type,
+      person_name: a.member_name || 'Unknown Person',
+      location: a.cameras?.name || a.metadata?.camera_name || 'Entrance',
+      description: `SECURITY: ${a.alert_type?.replace(/_/g, ' ')} detected at ${a.cameras?.zone || a.metadata?.camera_name || 'entrance'} - Confidence: ${((a.confidence || 0) * 100).toFixed(1)}%`,
+      detection_time: a.timestamp || a.created_at,
+      resolved: a.status === 'resolved',
+      resolution_notes: a.metadata?.resolution_notes || null,
+      snapshot_url: a.snapshot_url,
+    }));
+
+    return NextResponse.json({ alerts: mapped })
   } catch (error: any) {
     console.error('GET /api/alerts error:', error)
     return NextResponse.json(

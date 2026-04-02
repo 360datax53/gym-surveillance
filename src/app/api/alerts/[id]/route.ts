@@ -30,12 +30,11 @@ export async function PATCH(
     const body = await request.json();
     const alertId = params.id;
 
-    // We use the 'detections' table for consistency
     const { data, error } = await supabase
-      .from('detections')
+      .from('alerts')
       .update({
-        resolved: body.resolved !== undefined ? body.resolved : true,
-        resolution_notes: body.resolution_notes || null,
+        status: body.resolved ? 'resolved' : 'active',
+        metadata: { resolution_notes: body.resolution_notes || null },
         updated_at: new Date().toISOString()
       })
       .eq('id', alertId)
@@ -80,7 +79,7 @@ export async function GET(
     const alertId = params.id;
 
     const { data, error } = await supabase
-      .from('detections')
+      .from('alerts')
       .select('*')
       .eq('id', alertId)
       .single();
