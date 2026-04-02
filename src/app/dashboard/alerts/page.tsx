@@ -17,6 +17,7 @@ interface Detection {
   severity?: string
   resolution_notes?: string
   confidence: number
+  snapshot_url?: string
 }
 
 export default function AlertsPage() {
@@ -242,6 +243,22 @@ export default function AlertsPage() {
                       Detected at: {new Date(alert.detection_time || alert.alert_time || alert.created_at).toLocaleString()}
                     </p>
                   </div>
+
+                  {alert.snapshot_url && (
+                    <div style={{ marginTop: '1rem' }}>
+                      <img
+                        src={alert.snapshot_url}
+                        alt="Security Snapshot"
+                        style={{
+                          width: '100%',
+                          maxWidth: '360px',
+                          borderRadius: '8px',
+                          border: '1px solid var(--color-border-secondary)',
+                          display: 'block'
+                        }}
+                      />
+                    </div>
+                  )}
 
                   {alert.resolved && alert.resolution_notes && (
                     <div style={{ 
