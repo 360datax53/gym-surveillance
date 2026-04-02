@@ -37,7 +37,7 @@ export async function GET() {
     const orgIds = userOrgs?.map(uo => uo.organization_id) || [];
     
     // 3. Fetch alerts from the alerts table
-    let query = supabase.from('alerts').select('*, cameras(name, zone)');
+    let query = supabase.from('alerts').select('*');
 
     if (orgIds.length > 0) {
       query = query.in('organization_id', orgIds);
@@ -54,8 +54,8 @@ export async function GET() {
       ...a,
       alert_type: a.alert_type,
       person_name: a.member_name || 'Unknown Person',
-      location: a.cameras?.name || a.metadata?.camera_name || 'Entrance',
-      description: `SECURITY: ${a.alert_type?.replace(/_/g, ' ')} detected at ${a.cameras?.zone || a.metadata?.camera_name || 'entrance'} - Confidence: ${((a.confidence || 0) * 100).toFixed(1)}%`,
+      location: a.metadata?.camera_name || 'Entrance',
+      description: `SECURITY: ${a.alert_type?.replace(/_/g, ' ')} detected at ${a.metadata?.camera_name || 'entrance'} - Confidence: ${((a.confidence || 0) * 100).toFixed(1)}%`,
       detection_time: a.timestamp || a.created_at,
       resolved: a.status === 'resolved',
       resolution_notes: a.metadata?.resolution_notes || null,
