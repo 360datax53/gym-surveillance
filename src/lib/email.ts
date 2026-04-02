@@ -1,6 +1,6 @@
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const getResend = () => new Resend(process.env.RESEND_API_KEY);
 
 interface AlertDetails {
   cameraName: string;
@@ -31,7 +31,7 @@ export async function sendUnrecognizedPersonAlert(
   const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard/alerts`;
 
   try {
-    const { data, error } = await resend.emails.send({
+    const { data, error } = await getResend().emails.send({
       from: 'Gym Surveillance <onboarding@resend.dev>',
       to: [to],
       subject: `🚨 Security Alert: Unrecognised Person at ${cameraName}`,
