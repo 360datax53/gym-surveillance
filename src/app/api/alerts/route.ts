@@ -41,9 +41,8 @@ export async function GET() {
 
     if (orgIds.length > 0) {
       query = query.in('organization_id', orgIds);
-    } else if (session) {
-      query = query.eq('id', '00000000-0000-0000-0000-000000000000');
     }
+    // If orgIds is empty, let RLS handle visibility
 
     const { data, error } = await query.order('created_at', { ascending: false });
 
