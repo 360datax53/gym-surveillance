@@ -3,6 +3,48 @@ import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { sendUnrecognizedPersonAlert } from '@/lib/email';
 
+// Ray-casting point-in-polygon
+function pointInPolygon(point: { x: number; y: number }, polygon: { x: number; y: number }[]): boolean {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i].x, yi = polygon[i].y;
+    const xj = polygon[j].x, yj = polygon[j].y;
+    const intersect =
+      yi > point.y !== yj > point.y &&
+      point.x < ((xj - xi) * (point.y - yi)) / (yj - yi) + xi;
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+async function resolveZone(
+  supabase: any,
+  cameraDbId: string,
+  personX?: number,
+  personY?: number,
+  fallbackZone?: string
+): Promise<string> {
+  // If normalized coordinates are provided, try point-in-polygon against camera_zones
+  if (typeof personX === 'number' && typeof personY === 'number') {
+    const { data: zones } = await supabase
+      .from('camera_zones')
+      .select('zone_name, polygon_coords')
+      .eq('camera_id', cameraDbId)
+      .eq('is_active', true);
+
+    if (zones && zones.length > 0) {
+      for (const zone of zones) {
+        if (zone.polygon_coords?.length >= 3) {
+          if (pointInPolygon({ x: personX, y: personY }, zone.polygon_coords)) {
+            return zone.zone_name;
+          }
+        }
+      }
+    }
+  }
+  return fallbackZone || 'full_frame';
+}
+
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // Using service role key for automated system events (Step 7/8 bypass RLS)
@@ -130,6 +172,10 @@ export async function POST(request: NextRequest) {
         const aiResult = await callOpenAIVision(snapshot_url, prioritizedMembers);
         const { matched, member_id, member_name, confidence } = aiResult;
 
+        // --- STEP 5b: Resolve zone via point-in-polygon (person_x/y are optional normalized coords) ---
+        const { person_x, person_y } = body;
+        const detectedZone = await resolveZone(supabase, camera.id, person_x, person_y, (camera as any).zone);
+
         // --- STEP 6: Decision Logic ---
         const shouldAlert = !matched || (matched && confidence < CONFIDENCE_THRESHOLD);
 
@@ -147,9 +193,11 @@ export async function POST(request: NextRequest) {
                     confidence: confidence || 0,
                     member_id: member_id || null,
                     member_name: member_name || null,
-                    metadata: { 
+                    metadata: {
                         openai_raw: aiResult,
                         camera_name: camera.name,
+                        zone_name: detectedZone,
+                        camera_zone: (camera as any).zone,
                         prioritized_member_count: prioritizedMembers.length
                     },
                     status: 'active'

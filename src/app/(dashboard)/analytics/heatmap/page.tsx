@@ -152,10 +152,15 @@ export default function HeatmapPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedDate, timeRange])
 
-  // 10-second live refresh when live mode is on
+  // Go Live only makes sense on Today — auto-disable on other ranges
   useEffect(() => {
-    if (!isLive) return
-    const interval = setInterval(fetchHeatmap, 10000)
+    if (timeRange !== 'today') setIsLive(false)
+  }, [timeRange])
+
+  // Refresh every 10 min when live (matches cron interval)
+  useEffect(() => {
+    if (!isLive || timeRange !== 'today') return
+    const interval = setInterval(fetchHeatmap, 10 * 60 * 1000)
     return () => clearInterval(interval)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLive, selectedDate, timeRange])
@@ -364,17 +369,21 @@ export default function HeatmapPage() {
             />
           )}
 
-          {/* Live toggle */}
+          {/* Live toggle — only available on Today */}
           <button
-            onClick={() => setIsLive(prev => !prev)}
+            onClick={() => timeRange === 'today' && setIsLive(prev => !prev)}
+            disabled={timeRange !== 'today'}
+            title={timeRange !== 'today' ? 'Go Live is only available on Today' : ''}
             className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-colors border shadow-sm ${
-              isLive
+              timeRange !== 'today'
+                ? 'bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed'
+                : isLive
                 ? 'bg-green-100 text-green-700 border-green-300'
                 : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
             }`}
           >
-            <span className={`w-2 h-2 rounded-full ${isLive ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
-            {isLive ? 'Live' : 'Go Live'}
+            <span className={`w-2 h-2 rounded-full ${isLive && timeRange === 'today' ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
+            {isLive && timeRange === 'today' ? 'Live · 10 min' : 'Go Live'}
           </button>
 
           {/* CSV export */}

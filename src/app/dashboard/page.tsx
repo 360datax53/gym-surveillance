@@ -4,10 +4,31 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 
+interface OccupancyZone {
+  zone: string
+  person_count: number
+  recognized: number
+  unrecognized: number
+  color: string
+}
+
 export default function DashboardPage() {
   const [user, setUser] = useState<any>(null)
   const [heatmapData, setHeatmapData] = useState<any>(null)
   const [cameraCount, setCameraCount] = useState<number>(14)
+  const [occupancy, setOccupancy] = useState<OccupancyZone[]>([])
+
+  const fetchOccupancy = async () => {
+    try {
+      const res = await fetch('/api/analytics/occupancy')
+      if (res.ok) {
+        const data = await res.json()
+        setOccupancy(data.zones || [])
+      }
+    } catch (e) {
+      console.error('Failed to fetch occupancy', e)
+    }
+  }
 
   useEffect(() => {
     const supabase = createClient()
@@ -36,11 +57,15 @@ export default function DashboardPage() {
       if (count !== null) setCameraCount(count)
     }
     fetchCameraCount()
+
+    fetchOccupancy()
+    const interval = setInterval(fetchOccupancy, 10 * 60 * 1000)
+    return () => clearInterval(interval)
   }, [])
 
-  // Calculate busiest zone
-  const busiestZone = heatmapData && Object.keys(heatmapData.zoneStats).length > 0 
-    ? Object.entries(heatmapData.zoneStats).sort(([, a]: any, [, b]: any) => b.peak - a.peak)[0]?.[0]?.replace('_', ' ').toUpperCase() 
+  // Busiest zone from last 30 min occupancy (same source as Zone Occupancy card)
+  const busiestZone = occupancy.length > 0
+    ? occupancy[0].zone.replace(/_/g, ' ').toUpperCase()
     : 'No Data'
 
 
@@ -144,6 +169,50 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Zone Occupancy Card */}
+      <div style={{
+        background: 'var(--color-background-primary)',
+        border: '0.5px solid var(--color-border-tertiary)',
+        borderRadius: 'var(--border-radius-lg)',
+        padding: '1.5rem',
+        marginBottom: '2rem',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+          <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 500 }}>Zone Occupancy</h3>
+          <span style={{ fontSize: '11px', color: 'var(--color-text-tertiary)' }}>Updated every 10 min</span>
+        </div>
+        {occupancy.length > 0 ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '0.75rem' }}>
+            {occupancy.map(z => (
+              <div key={z.zone} style={{
+                borderRadius: 'var(--border-radius-md)',
+                border: `1.5px solid ${z.color}22`,
+                background: `${z.color}11`,
+                padding: '0.85rem 1rem',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '0.4rem' }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: z.color, flexShrink: 0 }} />
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--color-text-primary)', textTransform: 'capitalize' }}>
+                    {z.zone.replace(/_/g, ' ')}
+                  </span>
+                </div>
+                <p style={{ margin: 0, fontSize: '22px', fontWeight: 700, color: z.color }}>{z.person_count}</p>
+                <p style={{ margin: '2px 0 0', fontSize: '11px', color: 'var(--color-text-tertiary)' }}>
+                  {z.recognized} members&nbsp;·&nbsp;
+                  <span style={{ color: z.unrecognized > 0 ? 'var(--color-text-danger)' : 'var(--color-text-tertiary)' }}>
+                    {z.unrecognized} unrecognized
+                  </span>
+                </p>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-text-tertiary)' }}>
+            No zone data yet. Draw zones on a camera to start tracking.
+          </p>
+        )}
       </div>
 
       {/* Recent Activity */}

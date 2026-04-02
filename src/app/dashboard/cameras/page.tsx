@@ -510,7 +510,24 @@ export default function CamerasPage() {
 
               {camera.status === 'online' ? (
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.75rem' }}>
-                  <button 
+                  <button
+                    onClick={() => router.push(`/dashboard/cameras/${camera.id}/zones`)}
+                    style={{
+                      gridColumn: '1 / -1',
+                      padding: '0.6rem',
+                      backgroundColor: 'var(--color-background-secondary)',
+                      color: 'var(--color-text-primary)',
+                      border: '1px solid var(--color-border-secondary)',
+                      borderRadius: 'var(--border-radius-md)',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                    }}
+                  >
+                    🗺️ Manage Zones
+                  </button>
+                  <button
                     onClick={() => toggleProcessing(camera)}
                     style={{
                       padding: '0.75rem',

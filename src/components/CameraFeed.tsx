@@ -112,12 +112,12 @@ export default function CameraFeed({ camera, organizationId }: CameraFeedProps) 
           setDetections(data.detections || [])
 
           if (data.detections && data.detections.length > 0) {
-            // Check if any detection contains a legitimate face match
             const matchedDet = data.detections.find((d: any) => d.matched_name)
             if (matchedDet) {
+              // match_confidence is already 0–100 from the AI service
               setMatchedMember({
                 name: matchedDet.matched_name,
-                confidence: Math.round(matchedDet.match_confidence * 100),
+                confidence: Math.round(matchedDet.match_confidence),
                 membership_status: "Verified Match"
               })
             } else {
@@ -206,11 +206,11 @@ export default function CameraFeed({ camera, organizationId }: CameraFeedProps) 
         />
 
         <div style={{ position: 'absolute', top: '20px', right: '20px', display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'flex-end' }}>
-          <div style={{ background: matchedMember ? '#00c853' : streamActive ? '#da291c' : '#555', color: '#fff', padding: '6px 12px', borderRadius: '4px', fontSize: '11px', fontWeight: 900, letterSpacing: '0.1em' }}>
-            {matchedMember ? '✓ VERIFIED' : streamActive ? 'ANALYZING...' : 'CONNECTING...'}
+          <div style={{ background: matchedMember ? '#00c853' : detections.some((d: any) => d.type === 'face') ? '#da291c' : detections.length > 0 ? '#f59e0b' : '#555', color: '#fff', padding: '6px 12px', borderRadius: '4px', fontSize: '11px', fontWeight: 900, letterSpacing: '0.1em' }}>
+            {matchedMember ? '✓ VERIFIED' : detections.some((d: any) => d.type === 'face') ? 'ANALYZING...' : detections.length > 0 ? 'PERSON DETECTED' : 'MONITORING'}
           </div>
           <div style={{ background: 'rgba(0,0,0,0.8)', border: '1px solid #333', color: '#00e676', padding: '4px 8px', borderRadius: '4px', fontSize: '10px', fontWeight: 600 }}>
-            {detections.length} FACES DETECTED
+            {detections.length} {detections.some((d: any) => d.type === 'face') ? 'FACES' : 'PEOPLE'} DETECTED
           </div>
         </div>
 
