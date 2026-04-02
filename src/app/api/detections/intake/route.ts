@@ -190,18 +190,18 @@ export async function POST(request: NextRequest) {
                         // Fetch emails for these user IDs from auth.users or profiles
                         // For MVP, we'll assume there's a profiles table or just use one if possible
                         // Since I don't see profiles, I'll fallback to organization level if needed
-                        recipientEmail = 'onboarding@resend.dev'; // Failsafe for test domain
+                        recipientEmail = 'edataxr@gmail.com'; // Failsafe admin email
                     }
                 }
 
                 if (recipientEmail) {
                     await sendUnrecognizedPersonAlert(recipientEmail, {
                         cameraName: camera.name,
-                        snapshotUrl,
+                        snapshotUrl: snapshot_url,
                         timestamp,
                         organizationName: orgName,
                         confidence: confidence || 0,
-                        location: camera.zone || 'Entrance'
+                        location: (camera as any).zone || 'Entrance'
                     }).catch(err => console.error('Email alert delivery failed:', err));
                 }
             }
@@ -214,7 +214,7 @@ export async function POST(request: NextRequest) {
                 entry_time: timestamp,
                 is_member: true,
                 confidence_score: confidence
-            }).catch(e => console.error('Failed to log entry:', e));
+            }).then(({ error: e }) => { if (e) console.error('Failed to log entry:', e); });
         }
 
         // --- STEP 9: Return Response ---
