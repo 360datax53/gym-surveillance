@@ -6,16 +6,21 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const organization_id = searchParams.get('orgId') || searchParams.get('org') || '4f5a3104-f5ea-44e5-88be-0ebe205b0a37'
     const date = searchParams.get('date') || new Date().toISOString().split('T')[0]
+    const startDate = searchParams.get('startDate')
+    const endDate = searchParams.get('endDate')
 
     const supabase = createClient()
 
-    // 1. Fetch temporal heatmap buckets for the specific day
+    // 1. Fetch temporal heatmap buckets — supports single-day or multi-day range
+    const rangeStart = startDate ? `${startDate}T00:00:00` : `${date}T00:00:00`
+    const rangeEnd   = endDate   ? `${endDate}T23:59:59`   : `${date}T23:59:59`
+
     const { data: heatmapData, error } = await supabase
       .from('heatmap_data')
       .select('*')
       .eq('organization_id', organization_id)
-      .gte('time_bucket', `${date}T00:00:00`)
-      .lte('time_bucket', `${date}T23:59:59`)
+      .gte('time_bucket', rangeStart)
+      .lte('time_bucket', rangeEnd)
       .order('time_bucket', { ascending: true })
 
     if (error) throw error

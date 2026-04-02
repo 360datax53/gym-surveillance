@@ -38,6 +38,8 @@ export default function HeatmapPage() {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
   })
   const [loading, setLoading] = useState(true)
+  const [timeRange, setTimeRange] = useState<'today' | '7days' | 'custom'>('today')
+  const [isLive, setIsLive] = useState(false)
   
   // Floor Plan State
   const [isEditMode, setIsEditMode] = useState(false)
@@ -147,7 +149,16 @@ export default function HeatmapPage() {
 
   useEffect(() => {
     fetchHeatmap()
-  }, [selectedDate])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedDate, timeRange])
+
+  // 10-second live refresh when live mode is on
+  useEffect(() => {
+    if (!isLive) return
+    const interval = setInterval(fetchHeatmap, 10000)
+    return () => clearInterval(interval)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLive, selectedDate, timeRange])
 
   const fetchCameras = async () => {
     try {
@@ -175,7 +186,21 @@ export default function HeatmapPage() {
   const fetchHeatmap = async () => {
     setLoading(true)
     try {
-      const response = await fetch(`/api/analytics/heatmap?date=${selectedDate}`)
+      let url: string
+      if (timeRange === '7days') {
+        const end = new Date()
+        const start = new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000)
+        const fmt = (d: Date) =>
+          `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+        url = `/api/analytics/heatmap?startDate=${fmt(start)}&endDate=${fmt(end)}`
+      } else if (timeRange === 'today') {
+        const d = new Date(new Date().toLocaleString('en-US', { timeZone: 'Europe/London' }))
+        const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+        url = `/api/analytics/heatmap?date=${today}`
+      } else {
+        url = `/api/analytics/heatmap?date=${selectedDate}`
+      }
+      const response = await fetch(url)
       const data = await response.json()
       setHeatmapData(data)
     } catch (error) {
@@ -183,6 +208,23 @@ export default function HeatmapPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const exportCSV = () => {
+    if (!heatmapData?.timeline || heatmapData.timeline.length === 0) return
+    const header = 'Time,Zone,People'
+    const rows = heatmapData.timeline.map(
+      (item: { time: string; zone: string; people: number }) =>
+        `"${new Date(item.time).toLocaleString()}","${item.zone}",${item.people}`
+    )
+    const csv = [header, ...rows].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `heatmap-${timeRange === '7days' ? '7days' : selectedDate}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
   }
 
   // Removed unused CSS blob and marker color getters.
@@ -294,27 +336,67 @@ export default function HeatmapPage() {
           <p className="text-sm md:text-base text-gray-500 mt-2">Live spatial occupancy overlay on the gym floor plan.</p>
         </div>
         
-        <div className="flex flex-wrap items-center gap-3 md:gap-4 w-full md:w-auto">
+        <div className="flex flex-wrap items-center gap-2 md:gap-3 w-full md:w-auto">
+          {/* Time range selector */}
+          <div className="flex items-center bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+            {(['today', '7days', 'custom'] as const).map(range => (
+              <button
+                key={range}
+                onClick={() => setTimeRange(range)}
+                className={`px-3 py-2 text-xs font-bold transition-colors ${
+                  timeRange === range
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                {range === 'today' ? 'Today' : range === '7days' ? '7 Days' : 'Custom'}
+              </button>
+            ))}
+          </div>
+
+          {/* Date picker — only shown for custom range */}
+          {timeRange === 'custom' && (
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="p-2 bg-white border border-gray-200 rounded-lg text-xs font-medium focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
+            />
+          )}
+
+          {/* Live toggle */}
+          <button
+            onClick={() => setIsLive(prev => !prev)}
+            className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-colors border shadow-sm ${
+              isLive
+                ? 'bg-green-100 text-green-700 border-green-300'
+                : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+            }`}
+          >
+            <span className={`w-2 h-2 rounded-full ${isLive ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} />
+            {isLive ? 'Live' : 'Go Live'}
+          </button>
+
+          {/* CSV export */}
+          <button
+            onClick={exportCSV}
+            disabled={!heatmapData?.timeline?.length}
+            className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs font-bold text-gray-600 hover:bg-gray-50 shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            ⬇ Export CSV
+          </button>
+
+          {/* Edit mode toggle */}
           <button
             onClick={() => setIsEditMode(!isEditMode)}
-            className={`px-4 py-2 rounded-md text-sm font-bold transition-colors shadow-sm border ${
-              isEditMode 
-                ? 'bg-amber-100 text-amber-700 border-amber-300' 
+            className={`px-3 py-2 rounded-lg text-xs font-bold transition-colors shadow-sm border ${
+              isEditMode
+                ? 'bg-amber-100 text-amber-700 border-amber-300'
                 : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
             }`}
           >
             {isEditMode ? 'Done Editing' : '✏️ Map Cameras'}
           </button>
-          
-          <div className="flex items-center gap-2 md:gap-4 bg-white p-2 md:px-3 rounded-lg border border-gray-200 shadow-sm flex-1 md:flex-none justify-between md:justify-start">
-            <label className="text-xs md:text-sm font-medium text-gray-600 whitespace-nowrap">Date:</label>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="p-1.5 md:p-2 border border-gray-200 rounded-md text-xs md:text-sm focus:ring-2 focus:ring-blue-500 outline-none w-full md:w-auto"
-            />
-          </div>
         </div>
       </div>
 
@@ -395,22 +477,42 @@ export default function HeatmapPage() {
 
             {/* Below Map - Summary Stats */}
             {heatmapData && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 pt-4">
-                <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm text-center">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4">
+                <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm text-center">
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Total Foot Traffic</p>
                   <p className="text-3xl font-black text-gray-900">{heatmapData.totalVisitors}</p>
                 </div>
-                <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm text-center">
+                <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm text-center">
                   <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Max Capacity Point</p>
                   <p className="text-3xl font-black text-[#f59e0b]">
                     {Math.max(0, ...Object.values(heatmapData.zoneStats).map(z => z.peak))}
                   </p>
                 </div>
-                <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm text-center">
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Busy Zone</p>
-                  <p className="text-xl font-bold text-blue-600 mt-2 truncate">
-                    {Object.entries(heatmapData.zoneStats).sort(([, a], [, b]) => b.peak - a.peak)[0]?.[0]?.replace('_', ' ').toUpperCase() || 'N/A'}
+                <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm text-center">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Busiest Zone</p>
+                  <p className="text-lg font-bold text-blue-600 mt-1 truncate">
+                    {Object.entries(heatmapData.zoneStats).sort(([, a], [, b]) => b.peak - a.peak)[0]?.[0]?.replace(/_/g, ' ').toUpperCase() || 'N/A'}
                   </p>
+                </div>
+                {/* Peak Hours indicator */}
+                <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm text-center">
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Peak Hour</p>
+                  {heatmapData.timeline.length > 0 ? (() => {
+                    const hourBuckets: Record<number, number> = {}
+                    heatmapData.timeline.forEach((t: { time: string; people: number }) => {
+                      const h = new Date(t.time).getHours()
+                      hourBuckets[h] = (hourBuckets[h] || 0) + t.people
+                    })
+                    const peakHour = Number(Object.entries(hourBuckets).sort(([, a], [, b]) => b - a)[0]?.[0] ?? -1)
+                    if (peakHour === -1) return <p className="text-lg font-bold text-gray-400 mt-1">N/A</p>
+                    const label = `${peakHour % 12 === 0 ? 12 : peakHour % 12}:00 ${peakHour >= 12 ? 'PM' : 'AM'}`
+                    return (
+                      <div>
+                        <p className="text-lg font-black text-red-600 mt-1">{label}</p>
+                        <p className="text-[10px] text-gray-400 mt-0.5">{hourBuckets[peakHour]} people</p>
+                      </div>
+                    )
+                  })() : <p className="text-lg font-bold text-gray-400 mt-1">N/A</p>}
                 </div>
               </div>
             )}
@@ -423,7 +525,7 @@ export default function HeatmapPage() {
                   <div className="flex justify-between items-center bg-gray-50 -my-6 -mx-6 p-4 border-b border-gray-200 mb-6 rounded-t-xl">
                     <div>
                       <h2 className="text-lg font-bold text-gray-800">Traffic by Time of Day</h2>
-                      <p className="text-xs text-gray-500">15-minute intervals</p>
+                      <p className="text-xs text-gray-500">10-minute intervals</p>
                     </div>
                     {/* Calculate Absolute Peak Time */}
                     {heatmapData.timeline.length > 0 && (
