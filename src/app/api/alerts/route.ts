@@ -1,50 +1,20 @@
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const cookieStore = cookies();
-    const supabase = createServerClient(
+    const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
-          },
-        },
-      }
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { persistSession: false } }
     );
 
-    // 1. Get the current session
-    const { data: { session } } = await supabase.auth.getSession();
-
-    // 2. Fetch the user's organization
-    // 2. Fetch the user's authorized organizations
-    const { data: userOrgs } = await supabase
-      .from('user_organizations')
-      .select('organization_id')
-      .eq('user_id', session?.user.id);
-    
-    const orgIds = userOrgs?.map(uo => uo.organization_id) || [];
-    
-    // 3. Fetch alerts from the alerts table
-    let query = supabase.from('alerts').select('*');
-
-    if (orgIds.length > 0) {
-      query = query.in('organization_id', orgIds);
-    }
-    // If orgIds is empty, let RLS handle visibility
-
-    const { data, error } = await query.order('created_at', { ascending: false });
+    const { data, error } = await supabase
+      .from('alerts')
+      .select('*')
+      .order('created_at', { ascending: false });
 
     if (error) throw error;
 
@@ -73,22 +43,10 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const cookieStore = cookies();
-    const supabase = createServerClient(
+    const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll();
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            );
-          },
-        },
-      }
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { persistSession: false } }
     );
 
     const body = await request.json();
