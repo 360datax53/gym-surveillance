@@ -7,6 +7,7 @@ const nextConfig = {
       bodySizeLimit: '10mb',
     },
   },
+  allowedDevOrigins: ['*.replit.dev', '*.replit.app', '*.worf.replit.dev'],
 }
 
 module.exports = nextConfig
