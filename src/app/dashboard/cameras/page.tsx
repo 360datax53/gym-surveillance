@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import CameraFeed from '@/components/CameraFeed'
-import { useAiHost } from '@/hooks/useAiHost'
 import { useOrganization } from '@/context/OrganizationContext'
 
 interface Camera {
@@ -31,7 +30,6 @@ export default function CamerasPage() {
   const [editFormData, setEditFormData] = useState({ name: '', zone: '' })
   const [isSaving, setIsSaving] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
-  const { aiHost } = useAiHost()
   const [processingStatus, setProcessingStatus] = useState<{[key: string]: boolean}>({})
   const router = useRouter()
 
@@ -59,8 +57,7 @@ export default function CamerasPage() {
 
   const toggleProcessing = async (camera: Camera) => {
     const isProcessing = processingStatus[camera.id]
-    const aiServiceUrl = `http://${aiHost}:8000`;
-    const endpoint = isProcessing ? `${aiServiceUrl}/api/stop-rtsp` : `${aiServiceUrl}/api/process-rtsp`
+    const endpoint = isProcessing ? '/api/ai-stop' : '/api/ai-process'
     
     try {
       const response = await fetch(endpoint, {
@@ -80,7 +77,7 @@ export default function CamerasPage() {
       }))
     } catch (err) {
       console.error('Error toggling processing:', err)
-      alert('AI Service Error: Ensure the background AI service is running on port 5005.')
+      alert('AI Service Error: The background AI service may not be running.')
     }
   }
 
@@ -167,7 +164,7 @@ export default function CamerasPage() {
     // Poll AI service health to get active streams
     const checkAIHealth = async () => {
       try {
-        const res = await fetch(`http://${aiHost}:8000/health`)
+        const res = await fetch('/api/ai-health')
         await res.json()
         // In a real app, we'd sync active_streams with our cameras list
       } catch (e) {}

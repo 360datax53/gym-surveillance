@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { useAiHost } from '@/hooks/useAiHost'
 
 interface Detection {
   x: number
@@ -35,10 +34,6 @@ export default function CameraFeed({ camera, organizationId }: CameraFeedProps) 
   const [streamActive, setStreamActive] = useState(false)
   const frameImageRef = useRef<HTMLImageElement | null>(null)
 
-  const { aiHost } = useAiHost()
-
-  // Poll individual JPEG snapshots instead of persistent MJPEG streams
-  // This avoids Chrome's 6-connection-per-domain limit entirely
   useEffect(() => {
     if (camera.status !== 'online') return
 
@@ -49,8 +44,7 @@ export default function CameraFeed({ camera, organizationId }: CameraFeedProps) 
       if (cancelled) return
 
       try {
-        const aiServiceUrl = `http://${aiHost}:8000`;
-        const res = await fetch(`${aiServiceUrl}/api/snapshot/${camera.id}`, {
+        const res = await fetch(`/api/ai-snapshot/${camera.id}`, {
           cache: 'no-store'
         })
 
@@ -99,14 +93,12 @@ export default function CameraFeed({ camera, organizationId }: CameraFeedProps) 
     }
   }, [camera.id, camera.status])
 
-  // Poll for AI detections
   useEffect(() => {
     if (!streamActive) return
 
     const pollDetections = async () => {
       try {
-        const aiServiceUrl = `http://${aiHost}:8000`;
-        const res = await fetch(`${aiServiceUrl}/api/detections/${camera.id}`)
+        const res = await fetch(`/api/ai-detections/${camera.id}`)
         if (res.ok) {
           const data = await res.json()
           setDetections(data.detections || [])

@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import ZoneEditor, { CameraZone } from '@/components/ZoneEditor'
 import { useOrganization } from '@/context/OrganizationContext'
-import { useAiHost } from '@/hooks/useAiHost'
 
 interface Camera {
   id: string
@@ -18,22 +17,17 @@ export default function CameraZonesPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
   const { selectedOrgId } = useOrganization()
-  const { aiHost } = useAiHost()
-
   const [camera, setCamera] = useState<Camera | null>(null)
   const [zones, setZones] = useState<CameraZone[]>([])
   const [loading, setLoading] = useState(true)
   const [snapshotUrl, setSnapshotUrl] = useState<string | undefined>()
   const [snapshotStatus, setSnapshotStatus] = useState<'loading' | 'live' | 'none'>('loading')
 
-  // Try to grab a live frame from the AI service snapshot endpoint
   const fetchLiveSnapshot = useCallback(async () => {
-    if (!id || !aiHost) return
-    const url = `http://${aiHost}:8000/api/snapshot/${id}`
+    if (!id) return
     try {
-      const res = await fetch(url, { signal: AbortSignal.timeout(3000) })
+      const res = await fetch(`/api/ai-snapshot/${id}`, { signal: AbortSignal.timeout(3000) })
       if (res.ok && res.status !== 204) {
-        // Convert the JPEG blob to an object URL for the canvas
         const blob = await res.blob()
         const objectUrl = URL.createObjectURL(blob)
         setSnapshotUrl(objectUrl)
@@ -41,10 +35,9 @@ export default function CameraZonesPage() {
         return
       }
     } catch {
-      // AI service not running — fall through
     }
     setSnapshotStatus('none')
-  }, [id, aiHost])
+  }, [id])
 
   // Fetch camera info + zones
   useEffect(() => {
@@ -69,7 +62,6 @@ export default function CameraZonesPage() {
     load()
   }, [id])
 
-  // Fetch snapshot once aiHost is known
   useEffect(() => {
     fetchLiveSnapshot()
   }, [fetchLiveSnapshot])
