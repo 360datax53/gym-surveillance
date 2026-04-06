@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     const { camera_id, image_base64, organization_id, location } = body;
 
     // Call AI service for face detection on port 5005
-    const aiResponse = await fetch('http://localhost:5005/api/detect-face', {
+    const aiResponse = await fetch('http://localhost:8000/api/detect-face', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ image: image_base64 })

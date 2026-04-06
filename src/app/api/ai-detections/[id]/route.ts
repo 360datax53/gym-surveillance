@@ -10,7 +10,7 @@ export async function GET(
   const cameraId = params.id
 
   try {
-    const response = await fetch(`http://localhost:5005/api/detections/${cameraId}`, {
+    const response = await fetch(`http://localhost:8000/api/detections/${cameraId}`, {
       cache: 'no-store',
     })
 

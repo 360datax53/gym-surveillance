@@ -10,9 +10,7 @@ from face_detector import FaceDetector
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
-# Load env from current directory (ai_service/)
-env_path = os.path.join(os.path.dirname(__file__), '.env')
-load_dotenv(env_path)
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
@@ -24,7 +22,7 @@ detector = FaceDetector()
 supabase_url = os.environ.get("NEXT_PUBLIC_SUPABASE_URL")
 supabase_key = os.environ.get("NEXT_PUBLIC_SUPABASE_ANON_KEY")
 
-print(f"Supabase URL: {supabase_url}", flush=True)
+print(f"Supabase URL configured: {'Yes' if supabase_url else 'No'}", flush=True)
 if not supabase_url or not supabase_key:
     print("FATAL ERROR: Supabase credentials missing from .env", flush=True)
 
@@ -37,11 +35,14 @@ def update_ai_host():
         # 1. Prioritize a manually set public URL (e.g. from Ngrok)
         public_url = os.environ.get("PUBLIC_AI_URL")
         
-        if public_url:
+        replit_domain = os.environ.get("REPLIT_DEV_DOMAIN")
+        if replit_domain:
+            host_to_save = replit_domain
+            print(f"Using Replit Domain: {host_to_save}", flush=True)
+        elif public_url:
             host_to_save = public_url.replace("http://", "").replace("https://", "").split(":")[0]
             print(f"Using Public Tunnel Host: {host_to_save}", flush=True)
         else:
-            # 2. Fallback to auto-detecting the local IP address
             s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             s.connect(("8.8.8.8", 80))
             host_to_save = s.getsockname()[0]
@@ -238,9 +239,8 @@ class RTSPStreamProcessor:
                 }
                 
                 try:
-                    # Call the Next.js API
                     resp = requests.post(
-                        'http://localhost:3000/api/detections/auto-alert',
+                        'http://localhost:5000/api/detections/auto-alert',
                         json=payload,
                         timeout=2
                     )
@@ -520,5 +520,5 @@ def stream_camera(camera_id):
     return app.response_class(generate(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5005, threaded=True, debug=False)
+    app.run(host='0.0.0.0', port=8000, threaded=True, debug=False)
 

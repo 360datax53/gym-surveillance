@@ -59,7 +59,7 @@ export default function CamerasPage() {
 
   const toggleProcessing = async (camera: Camera) => {
     const isProcessing = processingStatus[camera.id]
-    const aiServiceUrl = `http://${aiHost}:5005`;
+    const aiServiceUrl = `http://${aiHost}:8000`;
     const endpoint = isProcessing ? `${aiServiceUrl}/api/stop-rtsp` : `${aiServiceUrl}/api/process-rtsp`
     
     try {
@@ -167,7 +167,7 @@ export default function CamerasPage() {
     // Poll AI service health to get active streams
     const checkAIHealth = async () => {
       try {
-        const res = await fetch(`http://${aiHost}:5005/health`)
+        const res = await fetch(`http://${aiHost}:8000/health`)
         await res.json()
         // In a real app, we'd sync active_streams with our cameras list
       } catch (e) {}

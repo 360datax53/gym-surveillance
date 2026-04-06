@@ -5,6 +5,8 @@ from PIL import Image
 import io
 import base64
 import os
+import logging
+logging.getLogger('ultralytics').setLevel(logging.WARNING)
 
 # DeepFace import with graceful fallback
 try:

@@ -49,7 +49,7 @@ export default function CameraFeed({ camera, organizationId }: CameraFeedProps) 
       if (cancelled) return
 
       try {
-        const aiServiceUrl = `http://${aiHost}:5005`;
+        const aiServiceUrl = `http://${aiHost}:8000`;
         const res = await fetch(`${aiServiceUrl}/api/snapshot/${camera.id}`, {
           cache: 'no-store'
         })
@@ -105,7 +105,7 @@ export default function CameraFeed({ camera, organizationId }: CameraFeedProps) 
 
     const pollDetections = async () => {
       try {
-        const aiServiceUrl = `http://${aiHost}:5005`;
+        const aiServiceUrl = `http://${aiHost}:8000`;
         const res = await fetch(`${aiServiceUrl}/api/detections/${camera.id}`)
         if (res.ok) {
           const data = await res.json()

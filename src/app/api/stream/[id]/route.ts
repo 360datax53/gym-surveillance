@@ -9,7 +9,7 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   const cameraId = params.id
-  const aiServiceUrl = `http://localhost:5005/api/stream/${cameraId}`
+  const aiServiceUrl = `http://localhost:8000/api/stream/${cameraId}`
 
   try {
     const response = await fetch(aiServiceUrl, {

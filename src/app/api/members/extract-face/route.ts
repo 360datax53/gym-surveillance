@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     // Call AI service to extract face encoding (/api/encode-face)
     let result: any;
     try {
-      const aiResponse = await fetch('http://127.0.0.1:5005/api/encode-face', {
+      const aiResponse = await fetch('http://127.0.0.1:8000/api/encode-face', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
       })
       result = await aiResponse.json()
     } catch (fetchErr: any) {
-      return NextResponse.json({ error: `AI service unreachable at 127.0.0.1:5005 — is it running? (${fetchErr.message})` }, { status: 502 })
+      return NextResponse.json({ error: `AI service unreachable at 127.0.0.1:8000 — is it running? (${fetchErr.message})` }, { status: 502 })
     }
     
     if (!result.success || !result.encoding) {

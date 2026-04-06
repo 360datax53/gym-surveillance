@@ -1,5 +1,5 @@
 ultralytics
-opencv-python
+opencv-python-headless
 pillow
 numpy
 flask
@@ -7,7 +7,6 @@ flask-cors
 supabase
 python-dotenv
 scipy
-# DeepFace for member face recognition
-# Install separately if needed: pip install deepface tf-keras
 deepface
+tf-keras
 requests

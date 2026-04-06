@@ -29,7 +29,7 @@ export default function CameraZonesPage() {
   // Try to grab a live frame from the AI service snapshot endpoint
   const fetchLiveSnapshot = useCallback(async () => {
     if (!id || !aiHost) return
-    const url = `http://${aiHost}:5005/api/snapshot/${id}`
+    const url = `http://${aiHost}:8000/api/snapshot/${id}`
     try {
       const res = await fetch(url, { signal: AbortSignal.timeout(3000) })
       if (res.ok && res.status !== 204) {
