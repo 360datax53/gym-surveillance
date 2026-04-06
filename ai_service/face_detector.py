@@ -27,7 +27,8 @@ class FaceDetector:
         
         # YOLOv8 general object detection — used for person/body detection
         # from overhead angles where faces aren't visible
-        self.person_model = YOLO('yolov8n.pt')  # Downloads automatically on first run
+        person_model_path = os.path.join(os.path.dirname(__file__), 'yolov8n.pt')
+        self.person_model = YOLO(person_model_path)
         
         # Higher threshold = fewer false positives (like gym weights)
         self.confidence_threshold = 0.45

@@ -156,7 +156,14 @@ class RTSPStreamProcessor:
     def start(self):
         if self.is_running:
             return
-            
+
+        self.is_running = True
+        self.thread = threading.Thread(target=self._connect_and_process, daemon=True)
+        self.thread.start()
+        print(f"Queued RTSP processor for camera {self.camera_id}")
+
+    def _connect_and_process(self):
+        import time
         try:
             cam_data = supabase.table('cameras').select('organization_id, zone').eq('id', self.camera_id).single().execute()
             if cam_data.data:
@@ -164,22 +171,25 @@ class RTSPStreamProcessor:
                 self.zone = cam_data.data.get('zone')
         except Exception as e:
             print(f"Error fetching camera metadata for {self.camera_id}: {e}")
-        
-        # On Mac ARM, hardware acceleration can cause SIGABRT crashes with HEVC RTSP
-        # We force software decoding and TCP transport to prevent "PPS id out of range"
+
         os.environ["OPENCV_FFMPEG_CAPTURE_OPTIONS"] = "rtsp_transport;tcp|hwaccel;none|probesize;5000000|analyzeduration;5000000"
-        
-        self.cap = cv2.VideoCapture(self.rtsp_url, cv2.CAP_FFMPEG)
-        if not self.cap.isOpened():
-            print(f"FAILED to connect to RTSP: {self.rtsp_url}")
+
+        # Retry RTSP connection up to 3 times (network may be slow)
+        for attempt in range(3):
+            self.cap = cv2.VideoCapture(self.rtsp_url, cv2.CAP_FFMPEG)
+            if self.cap.isOpened():
+                break
+            print(f"RTSP connect attempt {attempt + 1} failed for {self.camera_id}, retrying...")
+            time.sleep(2)
+
+        if not self.cap or not self.cap.isOpened():
+            print(f"FAILED to connect to RTSP after retries: {self.camera_id}")
+            self.is_running = False
             return
-            
-        self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1) # Minimize latency
-        
-        self.is_running = True
-        self.thread = threading.Thread(target=self._process_loop, daemon=True)
-        self.thread.start()
-        print(f"Started RTSP processor for {self.camera_id}")
+
+        self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        print(f"Connected to RTSP for camera {self.camera_id}")
+        self._process_loop()
 
     def _process_loop(self):
         frame_count = 0
@@ -519,9 +529,6 @@ def snapshot_camera(camera_id):
                 processor = RTSPStreamProcessor(camera_id, rtsp_url)
                 processor.start()
                 active_processors[camera_id] = processor
-                # Give it a moment to capture first frame
-                import time
-                time.sleep(0.5)
             else:
                 return Response(status=404)
         except Exception as e:
