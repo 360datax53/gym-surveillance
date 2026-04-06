@@ -10,3 +10,4 @@ scipy
 deepface
 tf-keras
 requests
+omegaconf
