@@ -56,4 +56,4 @@ externalPort = 8000
 [deployment]
 deploymentTarget = "vm"
 run = ["bash", "start.sh"]
-build = ["bash", "-c", "pip install -r ai_service/requirements.txt && npm run build"]
+build = ["bash", "-c", "npm run build"]
