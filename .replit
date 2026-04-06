@@ -55,5 +55,5 @@ externalPort = 8000
 
 [deployment]
 deploymentTarget = "vm"
-run = ["bash", "-c", "python ai_service/app.py & npm run start"]
+run = ["bash", "start.sh"]
 build = ["bash", "-c", "npm run build"]
