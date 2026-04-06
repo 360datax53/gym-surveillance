@@ -62,6 +62,59 @@ def update_ai_host():
 # Run auto-discovery on startup
 update_ai_host()
 
+def migrate_encodings_on_startup():
+    """
+    On startup, detect any stored face encodings that are incompatible with
+    the current InsightFace model (buffalo_sc produces 512-dim ArcFace vectors).
+    Stale encodings (e.g. 128-dim from old DeepFace Facenet) are cleared so
+    members can be re-enrolled via the dashboard instead of silently never matching.
+    """
+    EXPECTED_DIM = 512
+    try:
+        res = supabase.table('members').select('id, name, face_encoding').not_.is_('face_encoding', 'null').execute()
+        if not res.data:
+            print("No stored face encodings found — nothing to migrate.", flush=True)
+            return
+
+        stale_ids = []
+        import json as _json
+        for m in res.data:
+            raw_enc = m.get('face_encoding')
+            try:
+                if isinstance(raw_enc, str) and raw_enc.strip():
+                    if raw_enc.startswith('\\x'):
+                        hex_data = raw_enc[2:]
+                        enc = _json.loads(bytes.fromhex(hex_data).decode('utf-8'))
+                    else:
+                        enc = _json.loads(raw_enc)
+                else:
+                    enc = raw_enc
+                if isinstance(enc, list) and len(enc) != EXPECTED_DIM:
+                    stale_ids.append(m['id'])
+                    print(
+                        f"⚠ Member '{m['name']}' has a {len(enc)}-dim encoding "
+                        f"(expected {EXPECTED_DIM}-dim). Clearing for re-enrollment.",
+                        flush=True
+                    )
+            except Exception:
+                pass
+
+        if stale_ids:
+            for member_id in stale_ids:
+                supabase.table('members').update({'face_encoding': None}).eq('id', member_id).execute()
+            print(
+                f"Migration complete: cleared {len(stale_ids)} stale encoding(s). "
+                "Affected members must be re-enrolled via the dashboard.",
+                flush=True
+            )
+        else:
+            print(f"All stored encodings are {EXPECTED_DIM}-dim — no migration needed.", flush=True)
+    except Exception as e:
+        print(f"Note: Could not run encoding migration on startup: {e}", flush=True)
+
+# Migrate stale encodings on startup (incompatible DeepFace -> InsightFace transition)
+migrate_encodings_on_startup()
+
 # RTSP credentials - loaded from .env, never from the database
 RTSP_USERNAME = os.environ.get("RTSP_USERNAME", "")
 RTSP_PASSWORD = os.environ.get("RTSP_PASSWORD", "")
@@ -358,14 +411,16 @@ def encode_face_endpoint():
             return jsonify({'error': 'No image provided'}), 400
             
         try:
-            from deepface import DeepFace
-            # Using Facenet because it's locally cached and avoids download quota limit crashes
-            results = DeepFace.represent(img_path=temp_path, model_name="Facenet", enforce_detection=False, align=True)
-            
-            if not results:
+            import cv2
+            img_bgr = cv2.imread(temp_path)
+            if img_bgr is None:
+                return jsonify({'error': 'Could not decode image'}), 400
+
+            faces = detector.face_analysis.get(img_bgr) if detector.face_analysis else []
+            if not faces:
                 return jsonify({'error': 'No face embedding could be generated'}), 400
-                
-            embedding = results[0]['embedding']
+
+            embedding = faces[0].embedding.tolist()
             return jsonify({
                 'success': True,
                 'encoding': embedding

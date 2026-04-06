@@ -7,7 +7,7 @@ flask-cors
 supabase
 python-dotenv
 scipy
-deepface
-tf-keras
+insightface
+onnxruntime
 requests
 omegaconf

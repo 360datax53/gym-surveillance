@@ -8,14 +8,15 @@ import os
 import logging
 logging.getLogger('ultralytics').setLevel(logging.WARNING)
 
-# DeepFace import with graceful fallback
+# InsightFace import with graceful fallback
 try:
-    from deepface import DeepFace
-    DEEPFACE_AVAILABLE = True
-    print("✓ DeepFace loaded — member recognition enabled")
+    import insightface
+    from insightface.app import FaceAnalysis
+    INSIGHTFACE_AVAILABLE = True
+    print("✓ InsightFace loaded — member recognition enabled")
 except ImportError:
-    DEEPFACE_AVAILABLE = False
-    print("⚠ DeepFace not installed — running in detection-only mode")
+    INSIGHTFACE_AVAILABLE = False
+    print("⚠ InsightFace not installed — running in detection-only mode")
 
 
 class FaceDetector:
@@ -31,7 +32,17 @@ class FaceDetector:
         # Higher threshold = fewer false positives (like gym weights)
         self.confidence_threshold = 0.45
         self.min_face_size = 20  # Minimum width/height in pixels to consider a face
-        self.encoding_model = "Facenet"
+        self.encoding_model = "buffalo_sc"
+
+        # Initialize InsightFace for face embedding extraction
+        self.face_analysis = None
+        if INSIGHTFACE_AVAILABLE:
+            try:
+                self.face_analysis = FaceAnalysis(name='buffalo_sc', providers=['CPUExecutionProvider'])
+                self.face_analysis.prepare(ctx_id=0, det_size=(640, 640))
+                print("✓ InsightFace buffalo_sc model ready")
+            except Exception as e:
+                print(f"⚠ InsightFace model init failed: {e}")
         
     def detect_faces(self, image_source):
         """
@@ -112,9 +123,9 @@ class FaceDetector:
             return {'success': False, 'error': str(e), 'face_count': 0, 'detections': []}
 
     def extract_face_encoding(self, image: np.ndarray, detection: dict):
-        """Extract face embedding using DeepFace (Facenet512)."""
-        if not DEEPFACE_AVAILABLE:
-            return {'success': False, 'error': 'DeepFace not installed', 'encoding': None}
+        """Extract face embedding using InsightFace (ArcFace, 512-dim)."""
+        if not INSIGHTFACE_AVAILABLE or self.face_analysis is None:
+            return {'success': False, 'error': 'InsightFace not available', 'encoding': None}
         if detection.get('type') == 'person':
             return {'success': False, 'error': 'Body detection — no face to encode', 'encoding': None}
         
@@ -130,14 +141,18 @@ class FaceDetector:
             face_crop = image[max(0,y-pad_h):min(img_h,y+h+pad_h), max(0,x-pad_w):min(img_w,x+w+pad_w)]
             if face_crop.size == 0:
                 return {'success': False, 'error': 'Empty face crop'}
-            
-            results = DeepFace.represent(
-                img_path=face_crop, model_name=self.encoding_model,
-                enforce_detection=False, align=True
-            )
-            if results:
-                return {'success': True, 'encoding': results[0]['embedding'], 'model': self.encoding_model}
-            return {'success': False, 'error': 'No embedding returned'}
+
+            # InsightFace expects BGR (OpenCV native format)
+            if len(face_crop.shape) == 3 and face_crop.shape[2] == 3:
+                bgr_crop = face_crop if face_crop.dtype == np.uint8 else (face_crop * 255).astype(np.uint8)
+            else:
+                return {'success': False, 'error': 'Unexpected image format'}
+
+            faces = self.face_analysis.get(bgr_crop)
+            if faces:
+                embedding = faces[0].embedding.tolist()
+                return {'success': True, 'encoding': embedding, 'model': self.encoding_model}
+            return {'success': False, 'error': 'No face embedding returned by InsightFace'}
         except Exception as e:
             return {'success': False, 'error': str(e), 'encoding': None}
 
@@ -149,10 +164,20 @@ class FaceDetector:
             from scipy.spatial.distance import cosine
             best_match = None
             best_distance = float('inf')
+            current_dim = len(encoding)
             for member in member_encodings:
-                if not member.get('encoding'):
+                stored = member.get('encoding')
+                if not stored:
                     continue
-                distance = cosine(encoding, member['encoding'])
+                if len(stored) != current_dim:
+                    print(
+                        f"⚠ Skipping member '{member.get('name')}' — stored encoding "
+                        f"has {len(stored)} dims but current model produces {current_dim} dims. "
+                        "Member needs to be re-encoded via the dashboard.",
+                        flush=True
+                    )
+                    continue
+                distance = cosine(encoding, stored)
                 if distance < best_distance:
                     best_distance = distance
                     best_match = member
@@ -165,5 +190,6 @@ class FaceDetector:
                     'match': True
                 }
             return None
-        except Exception:
+        except Exception as e:
+            print(f"Error in match_member: {e}", flush=True)
             return None
