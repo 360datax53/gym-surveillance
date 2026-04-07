@@ -210,6 +210,7 @@ export default function CameraFeed({ camera, organizationId }: CameraFeedProps) 
           LIVE // {camera.name} // {new Date().toLocaleTimeString()}
         </div>
       </div>
+
     </div>
   )
 }

@@ -125,22 +125,27 @@ NEXT_PORT = os.environ.get("PORT", "5000")
 def secure_rtsp_url(rtsp_url: str) -> str:
     """
     Inject credentials from .env into an RTSP URL.
-    Strips any existing credentials from the DB first for safety.
-    e.g. rtsp://snap-dartford.dyndns.org:554/Streaming/Channels/102
-      -> rtsp://operator:smart1976@snap-dartford.dyndns.org:554/Streaming/Channels/102
+    Only strips and replaces embedded credentials when env-var credentials are
+    available — otherwise the original URL (including any embedded credentials)
+    is returned unchanged so the camera can still connect.
     """
     if not rtsp_url:
         return rtsp_url
-    # Strip any existing embedded credentials
     import re
-    clean = re.sub(r'rtsp://[^@]+@', 'rtsp://', rtsp_url)
-    # Inject from env
     if RTSP_USERNAME and RTSP_PASSWORD:
-        clean = clean.replace('rtsp://', f'rtsp://{RTSP_USERNAME}:{RTSP_PASSWORD}@', 1)
-    return clean
+        # Replace any embedded credentials with the ones from env
+        clean = re.sub(r'rtsp://[^@]+@', 'rtsp://', rtsp_url)
+        return clean.replace('rtsp://', f'rtsp://{RTSP_USERNAME}:{RTSP_PASSWORD}@', 1)
+    # No env credentials — return URL as-is (preserves any embedded credentials)
+    return rtsp_url
 
 # Global dictionary to track active processors
+# Maps camera_id -> RTSPStreamProcessor
 active_processors = {}
+
+# Cooldown tracker: camera_id -> timestamp of last failed connection attempt
+# Prevents hammering cameras that are down on every 200ms snapshot poll
+_processor_retry_after = {}
 
 class RTSPStreamProcessor:
     def __init__(self, camera_id, rtsp_url):
@@ -520,23 +525,33 @@ def health():
 def snapshot_camera(camera_id):
     """Return a single JPEG frame - no persistent connection needed"""
     from flask import Response
+    import time as _time
 
-    # Remove dead processors so they get retried automatically
+    # Remove dead processors
     if camera_id in active_processors and not active_processors[camera_id].is_running:
         del active_processors[camera_id]
+        _processor_retry_after[camera_id] = _time.time() + 15  # wait 15s before retrying
 
     if camera_id not in active_processors:
+        # Respect cooldown so a failed camera doesn't get hammered every 200ms
+        retry_at = _processor_retry_after.get(camera_id, 0)
+        if _time.time() < retry_at:
+            return Response(status=204)
+
         # Try to auto-start from database
         try:
             camera_data = supabase.table('cameras').select('rtsp_url').eq('id', camera_id).single().execute()
             if camera_data.data and camera_data.data['rtsp_url']:
                 rtsp_url = secure_rtsp_url(camera_data.data['rtsp_url'])
+                print(f"Auto-starting RTSP processor for camera {camera_id}", flush=True)
                 processor = RTSPStreamProcessor(camera_id, rtsp_url)
                 processor.start()
                 active_processors[camera_id] = processor
+                _processor_retry_after.pop(camera_id, None)
             else:
                 return Response(status=404)
         except Exception as e:
+            print(f"Auto-start error for {camera_id}: {e}", flush=True)
             return Response(str(e), status=500)
 
     processor = active_processors.get(camera_id)
@@ -560,7 +575,8 @@ def stream_camera(camera_id):
         try:
             camera_data = supabase.table('cameras').select('rtsp_url').eq('id', camera_id).single().execute()
             if camera_data.data and camera_data.data['rtsp_url']:
-                processor = RTSPStreamProcessor(camera_id, camera_data.data['rtsp_url'])
+                rtsp_url = secure_rtsp_url(camera_data.data['rtsp_url'])
+                processor = RTSPStreamProcessor(camera_id, rtsp_url)
                 processor.start()
                 active_processors[camera_id] = processor
             else:
