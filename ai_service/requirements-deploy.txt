@@ -1,0 +1,12 @@
+opencv-python-headless
+pillow
+numpy
+flask
+flask-cors
+supabase
+python-dotenv
+scipy
+insightface
+onnxruntime
+requests
+omegaconf
