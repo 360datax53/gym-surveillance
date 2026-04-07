@@ -62,9 +62,9 @@ localPort = 8000
 externalPort = 8000
 
 [deployment]
-deploymentTarget = "cloudrun"
-run = ["sh", "-c", "npm run start"]
-build = ["sh", "-c", "npm run build"]
+deploymentTarget = "autoscale"
+run = ["bash", "start.sh"]
+build = ["bash", "-c", "pip install -r ai_service/requirements.txt && next build"]
 
 [postMerge]
 path = "scripts/post-merge.sh"
