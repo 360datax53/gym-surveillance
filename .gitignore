@@ -22,5 +22,5 @@ yarn-error.log*
 /__pycache__
 *.pyc
 test_alert.py
-*.pt
+# *.pt  # model files must be in git for deployment
 ai_service/venv/
