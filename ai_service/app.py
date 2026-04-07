@@ -120,6 +120,7 @@ RTSP_USERNAME = os.environ.get("RTSP_USERNAME", "")
 RTSP_PASSWORD = os.environ.get("RTSP_PASSWORD", "")
 RTSP_HOST = os.environ.get("RTSP_HOST", "")
 RTSP_PORT = os.environ.get("RTSP_PORT", "554")
+NEXT_PORT = os.environ.get("PORT", "5000")
 
 def secure_rtsp_url(rtsp_url: str) -> str:
     """
@@ -303,7 +304,7 @@ class RTSPStreamProcessor:
                 
                 try:
                     resp = requests.post(
-                        'http://localhost:5000/api/detections/auto-alert',
+                        f'http://localhost:{NEXT_PORT}/api/detections/auto-alert',
                         json=payload,
                         timeout=2
                     )
@@ -519,7 +520,11 @@ def health():
 def snapshot_camera(camera_id):
     """Return a single JPEG frame - no persistent connection needed"""
     from flask import Response
-    
+
+    # Remove dead processors so they get retried automatically
+    if camera_id in active_processors and not active_processors[camera_id].is_running:
+        del active_processors[camera_id]
+
     if camera_id not in active_processors:
         # Try to auto-start from database
         try:
@@ -546,6 +551,10 @@ def snapshot_camera(camera_id):
 
 @app.route('/api/stream/<camera_id>')
 def stream_camera(camera_id):
+    # Remove dead processors so they get retried automatically
+    if camera_id in active_processors and not active_processors[camera_id].is_running:
+        del active_processors[camera_id]
+
     if camera_id not in active_processors:
         # Try to start it if it's not running but we have the URL in the database
         try:

@@ -1,5 +1,12 @@
-import { createClient } from '@/lib/supabase'
+import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
+
+// Use service role key so inserts bypass RLS (this is a server-to-server call from the AI service)
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { auth: { persistSession: false } }
+)
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,7 +22,7 @@ export async function POST(request: NextRequest) {
       location
     } = body
 
-    const supabase = createClient()
+    const supabase = supabaseAdmin
 
     // 1. Log the detection record for historical auditing
     const { data: detection, error } = await supabase
@@ -41,7 +48,29 @@ export async function POST(request: NextRequest) {
 
     if (error) throw error
 
-    // 2. Broadcast real-time alert event
+    // 2. Write to entries / alerts tables so occupancy analytics can read this data
+    if (is_member && member_id) {
+      await supabase.from('entries').insert({
+        organization_id,
+        camera_id,
+        member_id,
+        entry_time: new Date().toISOString(),
+        is_member: true,
+        confidence_score: confidence || 0,
+      }).then(({ error: e }) => { if (e) console.error('Failed to log entry:', e) })
+    } else if (!is_member) {
+      await supabase.from('alerts').insert({
+        organization_id,
+        camera_id,
+        alert_type: 'unrecognised_entry',
+        confidence: confidence || 0,
+        metadata: { zone_name: location || null },
+        status: 'active',
+        created_at: new Date().toISOString(),
+      }).then(({ error: e }) => { if (e) console.error('Failed to log alert:', e) })
+    }
+
+    // 3. Broadcast real-time alert event
     // This allows the dashboard to react instantly without polling
     const channel = supabase.channel(`alerts:${organization_id}`)
     
